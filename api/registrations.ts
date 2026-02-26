@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../src/db';
-import { registrations } from '../src/db/schema';
+import { db } from '../src/db/index.js';
+import { registrations } from '../src/db/schema.js';
 import { desc } from 'drizzle-orm';
 
 export default async function handler(
