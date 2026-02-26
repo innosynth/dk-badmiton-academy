@@ -142,6 +142,9 @@ export default function RegistrationForm() {
   };
 
   const onSubmit = (data: FormData) => {
+    // Only allow submission on the final step
+    if (step < steps.length - 1) return;
+
     console.log("Registration Data:", data);
     setSubmitted(true);
   };
@@ -205,29 +208,26 @@ export default function RegistrationForm() {
                 <div key={s.id} className="flex flex-1 items-center">
                   <div className="flex flex-col items-center gap-1">
                     <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                        isDone
-                          ? "bg-lime text-secondary-foreground"
-                          : isActive
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${isDone
+                        ? "bg-lime text-secondary-foreground"
+                        : isActive
                           ? "bg-navy text-primary-foreground shadow-lg"
                           : "bg-muted text-muted-foreground"
-                      }`}
+                        }`}
                     >
                       {isDone ? <CheckCircle className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                     </div>
                     <span
-                      className={`text-xs font-semibold hidden sm:block ${
-                        isActive ? "text-navy" : isDone ? "text-lime-dark" : "text-muted-foreground"
-                      }`}
+                      className={`text-xs font-semibold hidden sm:block ${isActive ? "text-navy" : isDone ? "text-lime-dark" : "text-muted-foreground"
+                        }`}
                     >
                       {s.label}
                     </span>
                   </div>
                   {i < steps.length - 1 && (
                     <div
-                      className={`mx-2 flex-1 h-0.5 rounded-full transition-all ${
-                        isDone ? "bg-lime" : "bg-muted"
-                      }`}
+                      className={`mx-2 flex-1 h-0.5 rounded-full transition-all ${isDone ? "bg-lime" : "bg-muted"
+                        }`}
                     />
                   )}
                 </div>
@@ -464,6 +464,7 @@ export default function RegistrationForm() {
         <div className="flex items-center justify-between pt-2">
           {step > 0 ? (
             <button
+              key="btn-back"
               type="button"
               onClick={() => setStep((s) => s - 1)}
               className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
@@ -471,10 +472,11 @@ export default function RegistrationForm() {
               <ChevronLeft className="h-4 w-4" /> Back
             </button>
           ) : (
-            <div />
+            <div key="btn-spacer" />
           )}
           {step < steps.length - 1 ? (
             <button
+              key="btn-next"
               type="button"
               onClick={handleNext}
               className="flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
@@ -484,6 +486,7 @@ export default function RegistrationForm() {
             </button>
           ) : (
             <button
+              key="btn-submit"
               type="submit"
               className="flex items-center gap-2 rounded-xl px-8 py-3 text-sm font-bold transition-all hover:opacity-90 active:scale-95"
               style={{ background: "var(--gradient-accent)", color: "hsl(var(--secondary-foreground))" }}
