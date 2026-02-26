@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink } from "lucide-react";
+import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone } from "lucide-react";
+import { toast } from "sonner";
 
 interface Registration {
     id: number;
@@ -37,24 +38,114 @@ export default function AdminPortal() {
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Registration | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loginData, setLoginData] = useState({ phone: "", password: "" });
 
     useEffect(() => {
-        fetch("/api/registrations")
-            .then((res) => res.json())
-            .then((data) => {
-                setRegistrations(data);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error(err);
-                setLoading(false);
-            });
+        const authStatus = localStorage.getItem("adminAuth");
+        if (authStatus === "true") {
+            setIsAuthenticated(true);
+        }
     }, []);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetch("/api/registrations")
+                .then((res) => res.json())
+                .then((data) => {
+                    setRegistrations(data);
+                    setLoading(false);
+                })
+                .catch((err) => {
+                    console.error(err);
+                    setLoading(false);
+                });
+        }
+    }, [isAuthenticated]);
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (loginData.phone === "93631 41888" && loginData.password === "Admin@2025$") {
+            setIsAuthenticated(true);
+            localStorage.setItem("adminAuth", "true");
+            toast.success("Welcome back, Admin!");
+        } else {
+            toast.error("Invalid credentials. Please try again.");
+        }
+    };
+
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+        localStorage.removeItem("adminAuth");
+        toast.info("Logged out successfully");
+    };
+
+    if (!isAuthenticated) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-background p-4 sm:p-0">
+                <div className="w-full max-w-sm overflow-hidden rounded-[2.5rem] border border-border bg-card shadow-2xl">
+                    <div className="bg-navy p-10 text-center text-white">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+                            <Lock className="h-8 w-8" />
+                        </div>
+                        <h2 className="text-2xl font-black uppercase tracking-widest">Admin Access</h2>
+                        <p className="mt-1 text-xs font-bold text-white/50">Strictly for Academy Management Only</p>
+                    </div>
+                    <form onSubmit={handleLogin} className="p-8 space-y-6">
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Phone Number</label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <input
+                                        type="tel"
+                                        placeholder="00000 00000"
+                                        value={loginData.phone}
+                                        onChange={(e) => setLoginData({ ...loginData, phone: e.target.value })}
+                                        className="h-12 w-full rounded-2xl border border-border bg-muted/30 pl-11 pr-4 text-sm font-bold focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                    <input
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={loginData.password}
+                                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                                        className="h-12 w-full rounded-2xl border border-border bg-muted/30 pl-11 pr-4 text-sm font-bold focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            type="submit"
+                            className="flex h-12 w-full items-center justify-center rounded-2xl bg-navy text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-navy-dark active:scale-95 shadow-xl shadow-navy/20"
+                        >
+                            Sign In
+                        </button>
+                    </form>
+                    <div className="bg-muted/30 p-4 text-center">
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-loose">
+                            Unauthorized access is prohibited.<br />Privacy & Data Protection Verified by DK Academy.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-navy border-t-transparent" />
+            <div className="flex h-screen items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-navy border-t-transparent shadow-lg" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-navy">Loading Databases...</p>
+                </div>
             </div>
         );
     }
@@ -63,9 +154,18 @@ export default function AdminPortal() {
         <div className="min-h-screen bg-muted/30 p-4 sm:p-8">
             <div className="mx-auto max-w-7xl">
                 <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-navy text-primary">Admin Portal</h1>
-                        <p className="text-muted-foreground">Manage academy registrations and memberships</p>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-navy text-primary">Admin Portal</h1>
+                            <p className="text-muted-foreground">Manage academy registrations and memberships</p>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-all hover:bg-destructive hover:text-white"
+                            title="Sign Out"
+                        >
+                            <LogOut className="h-5 w-5" />
+                        </button>
                     </div>
                     <div className="flex items-center gap-4 bg-card px-4 py-2 rounded-xl border border-border shadow-sm">
                         <div className="text-center">
