@@ -65,7 +65,7 @@ export default function AdminPortal() {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (loginData.phone === "93631 41888" && loginData.password === "Admin@2025$") {
+        if (loginData.phone === "9363141888" && loginData.password === "Admin@2025$") {
             setIsAuthenticated(true);
             localStorage.setItem("adminAuth", "true");
             toast.success("Welcome back, Admin!");
