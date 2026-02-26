@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,8 +17,6 @@ const schema = z.object({
   regNo: z.string().optional(),
   occupation: z.string().optional(),
   area: z.string().optional(),
-  preferredCourtLocation: z.string().optional(),
-  transportRequired: z.string().optional(),
   // Parent Info
   fatherName: z.string().optional(),
   fatherContact: z.string().optional(),
@@ -30,14 +28,12 @@ const schema = z.object({
   tshirtSize: z.string().optional(),
   sessionsPerMonth: z.string().optional(),
   enrollmentDate: z.string().optional(),
-  registrationFee: z.string().optional(),
   feesPerMonth: z.string().optional(),
   squadLevel: z.string().optional(),
-  coachName: z.string().optional(),
-  headCoachAssessment: z.string().optional(),
   // Declaration
-  parentSignature: z.string().optional(),
+  studentSignature: z.string().optional(),
   declarationDate: z.string().optional(),
+  proofType: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -49,6 +45,8 @@ const steps = [
   { id: 3, label: "Declare", icon: FileText },
 ];
 
+const today = new Date().toISOString().split("T")[0];
+
 const FormField = ({
   label,
   name,
@@ -57,6 +55,7 @@ const FormField = ({
   type = "text",
   placeholder,
   className = "",
+  readOnly = false,
 }: {
   label: string;
   name: keyof FormData;
@@ -65,6 +64,7 @@ const FormField = ({
   type?: string;
   placeholder?: string;
   className?: string;
+  readOnly?: boolean;
 }) => (
   <div className={`flex flex-col gap-1 ${className}`}>
     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -74,7 +74,8 @@ const FormField = ({
       {...register(name)}
       type={type}
       placeholder={placeholder ?? label}
-      className="rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20 transition-all"
+      readOnly={readOnly}
+      className={`rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20 transition-all ${readOnly ? "opacity-70 cursor-not-allowed bg-muted" : ""}`}
     />
     {error && <p className="text-xs text-destructive">{error}</p>}
   </div>
@@ -115,13 +116,22 @@ export default function RegistrationForm() {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [proofFileName, setProofFileName] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     trigger,
+    setValue,
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // Auto-fill today's date on mount
+  useEffect(() => {
+    setValue("enrollmentDate", today);
+    setValue("declarationDate", today);
+  }, [setValue]);
 
   const handleNext = async () => {
     const fieldsToValidate: (keyof FormData)[][] = [
@@ -131,7 +141,7 @@ export default function RegistrationForm() {
       [],
     ];
     const valid = await trigger(fieldsToValidate[step]);
-    if (valid) setStep((s) => s + 1);
+    if (valid) setStep((s) => Math.min(s + 1, steps.length - 1));
   };
 
   const onSubmit = (data: FormData) => {
@@ -148,10 +158,10 @@ export default function RegistrationForm() {
           </div>
           <h2 className="mb-2 text-3xl font-bold text-navy">Registration Submitted!</h2>
           <p className="text-muted-foreground mb-6">
-            Welcome to Giri Badminton Academy. We'll review your application and get in touch soon.
+            Welcome to D K Badminton Academy. We'll review your application and get in touch soon.
           </p>
           <button
-            onClick={() => setSubmitted(false)}
+            onClick={() => { setSubmitted(false); setStep(0); }}
             className="rounded-xl bg-navy px-8 py-3 text-sm font-semibold text-primary-foreground hover:bg-navy-dark transition-colors"
           >
             Submit Another
@@ -173,15 +183,15 @@ export default function RegistrationForm() {
             ✦ STUDENT & MEMBER ENROLLMENT
           </div>
           <h1 className="text-4xl font-bold text-primary-foreground sm:text-5xl">
-            Giri Badminton<br />
+            D K Badminton<br />
             <span style={{ color: "hsl(var(--lime))" }}>Academy</span>
           </h1>
           <p className="mt-3 text-sm text-primary-foreground/70">
-            401/1A, Sri Meenakshi Amman Nagar, Near KMCH Hospital, Sulur, Coimbatore – 641 402
+            SF No 417, Site No 9, Kalangal Road, Sulur, SULUR., Sulur
           </p>
           <div className="mt-2 flex gap-4 text-xs text-primary-foreground/60">
-            <span>📞 99525 60270</span>
-            <span>📞 93841 60947</span>
+            <span>📞 +91 93631 41888</span>
+            <span>📞 +91 90037 24071</span>
           </div>
         </div>
       </div>
@@ -293,18 +303,6 @@ export default function RegistrationForm() {
                 <FormField label="Registration No." name="regNo" register={register} />
                 <FormField label="Occupation" name="occupation" register={register} />
                 <FormField label="Area" name="area" register={register} />
-                <SelectField
-                  label="Preferred Court Location"
-                  name="preferredCourtLocation"
-                  register={register}
-                  options={["Court A – Sulur", "Court B – Coimbatore", "Court C – Peelamedu"]}
-                />
-                <SelectField
-                  label="Transport Required"
-                  name="transportRequired"
-                  register={register}
-                  options={["Yes", "No"]}
-                />
               </div>
             </div>
           </div>
@@ -347,26 +345,20 @@ export default function RegistrationForm() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <SelectField label="T-Shirt Size" name="tshirtSize" register={register} options={["XS", "S", "M", "L", "XL", "XXL"]} />
                 <FormField label="No. of Sessions / Month" name="sessionsPerMonth" register={register} type="number" />
-                <FormField label="Enrollment Date" name="enrollmentDate" register={register} type="date" />
-                <FormField label="Registration Fee (₹)" name="registrationFee" register={register} />
+                <FormField
+                  label="Enrollment Date"
+                  name="enrollmentDate"
+                  register={register}
+                  type="date"
+                  readOnly
+                />
                 <FormField label="Fees Per Month (₹)" name="feesPerMonth" register={register} />
                 <SelectField
                   label="Squad / Level"
                   name="squadLevel"
                   register={register}
                   options={["Beginner", "Intermediate", "Advanced", "Elite"]}
-                />
-                <FormField label="Coach Name" name="coachName" register={register} className="sm:col-span-2" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Head Coach Assessment Details
-                </label>
-                <textarea
-                  {...register("headCoachAssessment")}
-                  rows={3}
-                  placeholder="Assessment notes..."
-                  className="rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20 transition-all resize-none"
+                  className="sm:col-span-2"
                 />
               </div>
             </div>
@@ -380,10 +372,10 @@ export default function RegistrationForm() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
               <div className="rounded-xl bg-muted p-4 text-sm leading-relaxed text-muted-foreground space-y-2">
                 <p>
-                  This is to certify that as on date of enrollment, the student has been examined by a physician and has been found to be <strong className="text-foreground">PHYSICALLY AND MENTALLY FIT</strong> to undergo the different activities of the Giri Badminton Academy.
+                  This is to certify that as on date of enrollment, the student has been examined by a physician and has been found to be <strong className="text-foreground">PHYSICALLY AND MENTALLY FIT</strong> to undergo the different activities of D K Badminton Academy.
                 </p>
                 <p>
-                  I have attached a Medical Fitness Performa issued by (Giri Badminton Academy) duly filled in by my doctor. Authenticity of the doctor and doctor's report are purely my responsibility.
+                  I have attached a Medical Fitness Performa issued by (D K Badminton Academy) duly filled in by my doctor. Authenticity of the doctor and doctor's report are purely my responsibility.
                 </p>
                 <p>
                   We are fully aware that the course fee we paid for is <strong className="text-foreground">non-transferable and non-refundable</strong> for whatever reason, under any circumstances. The payment made by me is by calendar month (from first to last date of the month).
@@ -394,8 +386,70 @@ export default function RegistrationForm() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Parent / Guardian Signature" name="parentSignature" register={register} placeholder="Full name as signature" />
-                <FormField label="Date" name="declarationDate" register={register} type="date" />
+                <FormField label="Student Signature" name="studentSignature" register={register} placeholder="Full name as signature" />
+                <FormField
+                  label="Date"
+                  name="declarationDate"
+                  register={register}
+                  type="date"
+                  readOnly
+                />
+              </div>
+
+              {/* ID Proof Upload */}
+              <div className="space-y-3">
+                <SelectField
+                  label="Proof of Identity Type"
+                  name="proofType"
+                  register={register}
+                  options={["Aadhaar Card", "PAN Card", "Driving Licence", "School ID Card", "Passport", "Voter ID"]}
+                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Upload Proof Document
+                  </label>
+                  <div
+                    className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-navy/30 bg-muted/50 p-4 hover:border-navy/60 transition-colors"
+                    onClick={() => document.getElementById("proof-upload")?.click()}
+                  >
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-navy/10">
+                      <Upload className="h-5 w-5 text-navy" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {proofFileName ? (
+                        <>
+                          <p className="text-sm font-semibold text-navy truncate">{proofFileName}</p>
+                          <p className="text-xs text-muted-foreground">Click to change file</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-semibold text-foreground">Click to upload proof</p>
+                          <p className="text-xs text-muted-foreground">JPG, PNG or PDF — max 5MB</p>
+                        </>
+                      )}
+                    </div>
+                    {proofPreview && (
+                      <img src={proofPreview} alt="Proof preview" className="h-12 w-12 rounded-lg object-cover flex-shrink-0" />
+                    )}
+                  </div>
+                  <input
+                    id="proof-upload"
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setProofFileName(file.name);
+                        if (file.type.startsWith("image/")) {
+                          setProofPreview(URL.createObjectURL(file));
+                        } else {
+                          setProofPreview(null);
+                        }
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="rounded-xl border border-lime/30 bg-lime/5 p-4">
