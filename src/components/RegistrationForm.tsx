@@ -134,13 +134,10 @@ export default function RegistrationForm() {
   }, [setValue]);
 
   const handleNext = async () => {
-    const fieldsToValidate: (keyof FormData)[][] = [
-      ["studentName"],
-      [],
-      [],
-      [],
-    ];
-    const valid = await trigger(fieldsToValidate[step]);
+    const fieldsToValidate: (keyof FormData)[] | undefined = step === 0
+      ? ["studentName"]
+      : undefined;
+    const valid = fieldsToValidate ? await trigger(fieldsToValidate) : true;
     if (valid) setStep((s) => Math.min(s + 1, steps.length - 1));
   };
 
