@@ -549,370 +549,334 @@ export default function AdminPortal() {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* List */}
-                    <div className="lg:col-span-2 space-y-3">
-                        {filteredRegistrations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-card/50 p-20 text-center">
-                                <Users className="mb-4 h-12 w-12 text-muted-foreground opacity-20" />
-                                <h3 className="text-xl font-bold text-navy">No registrations yet</h3>
-                                <p className="text-sm text-muted-foreground">New entries will appear here as they come in.</p>
-                            </div>
-                        ) : (
-                            filteredRegistrations.map((reg) => {
-                                const status = getFeeStatus(reg);
-                                return (
-                                    <div
-                                        key={reg.id}
-                                        onClick={() => setSelected(reg)}
-                                        className={`group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:scale-[1.01] hover:shadow-lg ${selected?.id === reg.id ? "border-navy ring-4 ring-navy/5 shadow-md" : "border-border shadow-sm"
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-5">
-                                            <div className="h-16 w-16 overflow-hidden rounded-2xl bg-muted ring-2 ring-background shadow-inner shrink-0">
-                                                {reg.photoUrl ? (
-                                                    <img src={reg.photoUrl} alt="" className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div className="flex h-full w-full items-center justify-center">
-                                                        <User className="text-muted-foreground h-6 w-6" />
-                                                    </div>
-                                                )}
+                {/* Main Table View */}
+                <div className="rounded-[2.5rem] border border-border bg-card shadow-xl overflow-hidden">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-navy text-white">
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Profile</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Name</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Type</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Squad/Level</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Area</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Fees</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                                {filteredRegistrations.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center opacity-30">
+                                                <Users className="h-12 w-12 mb-2" />
+                                                <p className="text-sm font-bold uppercase tracking-widest">No matching records found</p>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-3">
-                                                    <h3 className="text-lg font-bold text-navy leading-tight truncate">{reg.studentName}</h3>
-                                                    <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest shrink-0 ${reg.type === "student" ? "bg-navy/10 text-navy" : "bg-lime/20 text-lime-dark"
-                                                        }`}>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredRegistrations.map((reg) => {
+                                        const status = getFeeStatus(reg);
+                                        return (
+                                            <tr key={reg.id} className="group hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="h-12 w-10 overflow-hidden rounded-xl bg-muted border border-border/50 shadow-inner">
+                                                        {reg.photoUrl ? (
+                                                            <img src={reg.photoUrl} alt="" className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            <div className="flex h-full w-full items-center justify-center">
+                                                                <User className="h-4 w-4 text-muted-foreground/40" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-sm font-black text-navy">{reg.studentName}</p>
+                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">ID: #{reg.id.toString().padStart(4, '0')}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${reg.type === "student" ? "bg-navy/10 text-navy" : "bg-lime/20 text-lime-dark"}`}>
                                                         {reg.type}
                                                     </span>
-                                                    {!reg.isActive && (
-                                                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-destructive shrink-0">
-                                                            Inactive
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-xs font-bold text-navy">{reg.squadLevel || "—"}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-xs font-medium text-muted-foreground">{reg.area || "General"}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${reg.isActive ? "text-lime-dark" : "bg-destructive/10 text-destructive"}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${reg.isActive ? "bg-lime-dark" : "bg-destructive"}`} />
+                                                        {reg.isActive ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {status.isDue ? (
+                                                        <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter text-destructive animate-pulse">
+                                                            <FileText className="h-3 w-3" /> Due
                                                         </span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground opacity-50">Paid</span>
                                                     )}
-                                                </div>
-                                                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                                    <span className="flex items-center gap-1 font-medium shrink-0"><CheckCircle className="h-3 w-3 text-lime-dark" /> {reg.area || "General"}</span>
-                                                    <span className="h-1 w-1 rounded-full bg-border shrink-0" />
-                                                    <span className="shrink-0">Joined {new Date(reg.createdAt).toLocaleDateString()}</span>
-                                                    {status.isDue && (
-                                                        <>
-                                                            <span className="h-1 w-1 rounded-full bg-border shrink-0" />
-                                                            <span className="text-destructive font-black uppercase text-[10px] tracking-tighter shrink-0 flex items-center gap-1 animate-pulse"><FileText className="h-3 w-3" /> {status.label}</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <div className="mb-1 rounded-lg bg-navy px-3 py-1 flex flex-col items-center justify-center">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-white/60">Squad</p>
-                                                    <p className="text-xs font-black text-white">{reg.squadLevel || "—"}</p>
-                                                </div>
-                                                <button className="text-navy opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <ExternalLink className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <button
+                                                        onClick={() => setSelected(reg)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all active:scale-90"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
 
-                    {/* Details */}
-                    <div className="lg:col-span-1">
-                        {selected ? (
-                            <div className="sticky top-8 rounded-3xl border border-border bg-card shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-                                <div className="p-8 pb-4 flex flex-col items-center text-center border-b border-border/50 bg-gradient-to-b from-muted/30 to-card">
-                                    <div className="relative mb-6">
-                                        <div className="h-40 w-32 overflow-hidden rounded-[2rem] border-4 border-background shadow-2xl rotate-3 transition-transform hover:rotate-0">
-                                            {selected.photoUrl ? (
-                                                <img src={selected.photoUrl} alt="" className="h-full w-full object-cover" />
-                                            ) : (
-                                                <div className="flex h-full w-full items-center justify-center bg-muted">
-                                                    <User className="h-12 w-12 text-muted-foreground/30" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className={`absolute -bottom-2 -right-2 h-10 w-10 flex items-center justify-center rounded-full border-2 border-background font-bold text-white shadow-lg ${selected.type === "student" ? "bg-navy" : "bg-lime-dark"}`}>
-                                            {selected.type === "student" ? "S" : "M"}
-                                        </div>
-                                    </div>
-                                    <h2 className="text-2xl font-black text-navy leading-tight">{selected.studentName}</h2>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{selected.type} Enrollment</p>
-                                        {!selected.isActive && (
-                                            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-destructive">Deactivated</span>
-                                        )}
-                                    </div>
+            {/* Registration Details Modal */}
+            {selected && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-navy/20 p-4 backdrop-blur-md">
+                    <div className="relative w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-[3rem] border border-border bg-card shadow-2xl flex flex-col sm:flex-row">
+                        <button
+                            onClick={() => { setSelected(null); setIsEditing(false); }}
+                            className="absolute right-6 top-6 z-10 rounded-full bg-white/80 p-2 text-navy hover:bg-destructive hover:text-white transition-all backdrop-blur-sm shadow-xl"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
 
-                                    {!isEditing && (
-                                        <div className="mt-6 flex gap-2">
-                                            <button
-                                                onClick={handleStartEdit}
-                                                className="flex h-9 items-center gap-2 rounded-lg bg-navy px-4 text-xs font-bold text-white transition-all hover:bg-navy-dark active:scale-95 shadow-md"
-                                            >
-                                                <Edit2 className="h-3 w-3" /> Edit Profile
-                                            </button>
-                                            <button
-                                                onClick={() => handleToggleStatus(selected)}
-                                                className={`flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-bold transition-all active:scale-95 shadow-md ${selected.isActive
-                                                    ? "bg-destructive/10 text-destructive hover:bg-destructive hover:text-white"
-                                                    : "bg-lime text-secondary-foreground hover:bg-lime/90"}`}
-                                            >
-                                                {selected.isActive ? (
-                                                    <><UserMinus className="h-3 w-3" /> Deactivate</>
-                                                ) : (
-                                                    <><UserCheck className="h-3 w-3" /> Activate</>
-                                                )}
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {isEditing && (
-                                        <div className="mt-6 flex gap-2">
-                                            <button
-                                                onClick={handleSaveEdit}
-                                                disabled={isUpdating}
-                                                className="flex h-9 items-center gap-2 rounded-lg bg-lime px-4 text-xs font-bold text-secondary-foreground transition-all hover:bg-lime/90 active:scale-95 shadow-md disabled:opacity-50"
-                                            >
-                                                {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save Changes
-                                            </button>
-                                            <button
-                                                onClick={() => setIsEditing(false)}
-                                                disabled={isUpdating}
-                                                className="flex h-9 items-center gap-2 rounded-lg bg-muted px-4 text-xs font-bold text-muted-foreground transition-all hover:bg-muted-foreground hover:text-white active:scale-95 shadow-sm disabled:opacity-50"
-                                            >
-                                                <X className="h-3 w-3" /> Cancel
-                                            </button>
+                        {/* Modal Header / Profile Info */}
+                        <div className="w-full sm:w-80 shrink-0 bg-gradient-to-b from-muted/50 to-card p-8 flex flex-col items-center text-center border-b sm:border-b-0 sm:border-r border-border/50">
+                            <div className="relative mb-6">
+                                <div className="h-48 w-40 overflow-hidden rounded-[2.5rem] border-4 border-background shadow-2xl transition-transform hover:scale-105">
+                                    {selected.photoUrl ? (
+                                        <img src={selected.photoUrl} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center bg-muted">
+                                            <User className="h-12 w-12 text-muted-foreground/30" />
                                         </div>
                                     )}
                                 </div>
+                                <div className={`absolute -bottom-2 -right-2 h-10 w-10 flex items-center justify-center rounded-full border-2 border-background font-black text-white shadow-lg ${selected.type === "student" ? "bg-navy" : "bg-lime-dark"}`}>
+                                    {selected.type === "student" ? "S" : "M"}
+                                </div>
+                            </div>
 
-                                <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
-                                    <DetailSection title="Personal Information">
-                                        <DetailItem label="Full Name" value={isEditing ? editForm.studentName : selected.studentName} isEditing={isEditing} field="studentName" onChange={(val) => setEditForm(f => ({ ...f, studentName: val }))} />
-                                        <DetailItem label="DOB" value={isEditing ? editForm.dob : selected.dob} type="date" isEditing={isEditing} field="dob" onChange={(val) => setEditForm(f => ({ ...f, dob: val }))} />
-                                        <DetailItem label="Age" value={isEditing ? editForm.age : selected.age} isEditing={isEditing} field="age" onChange={(val) => setEditForm(f => ({ ...f, age: val }))} />
-                                        <DetailItem label="Sex" value={isEditing ? editForm.sex : selected.sex} isEditing={isEditing} field="sex" onChange={(val) => setEditForm(f => ({ ...f, sex: val }))} />
-                                        <DetailItem label="Area" value={isEditing ? editForm.area : selected.area} isEditing={isEditing} field="area" onChange={(val) => setEditForm(f => ({ ...f, area: val }))} />
-                                        {selected.type === "student" ? (
-                                            <DetailItem label="School" value={isEditing ? editForm.schoolName : selected.schoolName} isEditing={isEditing} field="schoolName" onChange={(val) => setEditForm(f => ({ ...f, schoolName: val }))} />
-                                        ) : (
-                                            <DetailItem label="Occupation" value={isEditing ? editForm.occupation : selected.occupation} isEditing={isEditing} field="occupation" onChange={(val) => setEditForm(f => ({ ...f, occupation: val }))} />
-                                        )}
-                                    </DetailSection>
+                            <h2 className="text-2xl font-black text-navy leading-tight">{selected.studentName}</h2>
+                            <div className="mt-1 flex items-center gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{selected.type} Enrollment</p>
+                                {!selected.isActive && (
+                                    <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-destructive">Deactivated</span>
+                                )}
+                            </div>
 
-                                    {selected.type === "student" && (
-                                        <DetailSection title="Parental Information">
-                                            <DetailItem label="Father Name" value={isEditing ? editForm.fatherName : selected.fatherName} isEditing={isEditing} field="fatherName" onChange={(val) => setEditForm(f => ({ ...f, fatherName: val }))} />
-                                            <DetailItem label="Father Contact" value={isEditing ? editForm.fatherContact : selected.fatherContact} isEditing={isEditing} field="fatherContact" onChange={(val) => setEditForm(f => ({ ...f, fatherContact: val }))} />
-                                            <DetailItem label="Father Email" value={isEditing ? editForm.fatherEmail : selected.fatherEmail} isEditing={isEditing} field="fatherEmail" onChange={(val) => setEditForm(f => ({ ...f, fatherEmail: val }))} />
-                                            <div className="col-span-2 h-px bg-border/30 my-1" />
-                                            <DetailItem label="Mother Name" value={isEditing ? editForm.motherName : selected.motherName} isEditing={isEditing} field="motherName" onChange={(val) => setEditForm(f => ({ ...f, motherName: val }))} />
-                                            <DetailItem label="Mother Contact" value={isEditing ? editForm.motherContact : selected.motherContact} isEditing={isEditing} field="motherContact" onChange={(val) => setEditForm(f => ({ ...f, motherContact: val }))} />
-                                            <DetailItem label="Mother Email" value={isEditing ? editForm.motherEmail : selected.motherEmail} isEditing={isEditing} field="motherEmail" onChange={(val) => setEditForm(f => ({ ...f, motherEmail: val }))} />
-                                        </DetailSection>
+                            <div className="mt-8 w-full space-y-2">
+                                {!isEditing ? (
+                                    <>
+                                        <button
+                                            onClick={handleStartEdit}
+                                            className="w-full flex h-10 items-center justify-center gap-2 rounded-xl bg-navy text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-navy-dark shadow-lg shadow-navy/20"
+                                        >
+                                            <Edit2 className="h-3 w-3" /> Edit Profile
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleStatus(selected)}
+                                            className={`w-full flex h-10 items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selected.isActive
+                                                ? "bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive hover:text-white"
+                                                : "bg-lime text-secondary-foreground hover:bg-lime/90"}`}
+                                        >
+                                            {selected.isActive ? <><UserMinus className="h-3 w-3" /> Deactivate</> : <><UserCheck className="h-3 w-3" /> Activate</>}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={handleSaveEdit}
+                                            disabled={isUpdating}
+                                            className="w-full flex h-10 items-center justify-center gap-2 rounded-xl bg-lime text-[10px] font-black uppercase tracking-widest text-secondary-foreground transition-all hover:bg-lime/90 shadow-lg disabled:opacity-50"
+                                        >
+                                            {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save Changes
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            disabled={isUpdating}
+                                            className="w-full flex h-10 items-center justify-center gap-2 rounded-xl bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-all disabled:opacity-50"
+                                        >
+                                            <X className="h-3 w-3" /> Cancel
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Body / Scrollable Info */}
+                        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <DetailSection title="Personal Information">
+                                    <DetailItem label="Full Name" value={isEditing ? editForm.studentName : selected.studentName} isEditing={isEditing} field="studentName" onChange={(val) => setEditForm(f => ({ ...f, studentName: val }))} />
+                                    <DetailItem label="DOB" value={isEditing ? editForm.dob : selected.dob} type="date" isEditing={isEditing} field="dob" onChange={(val) => setEditForm(f => ({ ...f, dob: val }))} />
+                                    <DetailItem label="Age" value={isEditing ? editForm.age : selected.age} isEditing={isEditing} field="age" onChange={(val) => setEditForm(f => ({ ...f, age: val }))} />
+                                    <DetailItem label="Sex" value={isEditing ? editForm.sex : selected.sex} isEditing={isEditing} field="sex" onChange={(val) => setEditForm(f => ({ ...f, sex: val }))} />
+                                    <DetailItem label="Area" value={isEditing ? editForm.area : selected.area} isEditing={isEditing} field="area" onChange={(val) => setEditForm(f => ({ ...f, area: val }))} />
+                                    {selected.type === "student" ? (
+                                        <DetailItem label="School" value={isEditing ? editForm.schoolName : selected.schoolName} isEditing={isEditing} field="schoolName" onChange={(val) => setEditForm(f => ({ ...f, schoolName: val }))} />
+                                    ) : (
+                                        <DetailItem label="Occupation" value={isEditing ? editForm.occupation : selected.occupation} isEditing={isEditing} field="occupation" onChange={(val) => setEditForm(f => ({ ...f, occupation: val }))} />
                                     )}
+                                </DetailSection>
 
-                                    <DetailSection title="Academy Details">
-                                        <DetailItem
-                                            label="Squad/Level"
-                                            value={isEditing ? editForm.squadLevel : selected.squadLevel}
-                                            isEditing={isEditing}
-                                            field="squadLevel"
-                                            type="select"
-                                            options={["Beginner", "Intermediate", "Advanced", "Elite"]}
-                                            onChange={(val) => setEditForm(f => ({ ...f, squadLevel: val }))}
-                                        />
-                                        <DetailItem
-                                            label="T-Shirt Size"
-                                            value={isEditing ? editForm.tshirtSize : selected.tshirtSize}
-                                            isEditing={isEditing}
-                                            field="tshirtSize"
-                                            type="select"
-                                            options={["XS", "S", "M", "L", "XL", "XXL"]}
-                                            onChange={(val) => setEditForm(f => ({ ...f, tshirtSize: val }))}
-                                        />
-                                        <DetailItem label="Sessions/Month" value={isEditing ? editForm.sessionsPerMonth : selected.sessionsPerMonth} type="number" isEditing={isEditing} field="sessionsPerMonth" onChange={(val) => setEditForm(f => ({ ...f, sessionsPerMonth: val }))} />
-                                        <DetailItem label="Fees/Month" value={isEditing ? editForm.feesPerMonth : selected.feesPerMonth} isEditing={isEditing} field="feesPerMonth" onChange={(val) => setEditForm(f => ({ ...f, feesPerMonth: val }))} />
-                                        <DetailItem label="Fees Due" value={isEditing ? editForm.feesDate : selected.feesDate} type="date" isEditing={isEditing} field="feesDate" onChange={(val) => setEditForm(f => ({ ...f, feesDate: val }))} />
-                                        <DetailItem label="Enrollment Date" value={isEditing ? editForm.enrollmentDate : selected.enrollmentDate} type="date" isEditing={isEditing} field="enrollmentDate" onChange={(val) => setEditForm(f => ({ ...f, enrollmentDate: val }))} />
-                                        <DetailItem label="Registration Link" value={isEditing ? editForm.regNo : selected.regNo} isEditing={isEditing} field="regNo" onChange={(val) => setEditForm(f => ({ ...f, regNo: val }))} />
+                                {selected.type === "student" && (
+                                    <DetailSection title="Parental Information">
+                                        <DetailItem label="Father Name" value={isEditing ? editForm.fatherName : selected.fatherName} isEditing={isEditing} field="fatherName" onChange={(val) => setEditForm(f => ({ ...f, fatherName: val }))} />
+                                        <DetailItem label="Father Contact" value={isEditing ? editForm.fatherContact : selected.fatherContact} isEditing={isEditing} field="fatherContact" onChange={(val) => setEditForm(f => ({ ...f, fatherContact: val }))} />
+                                        <DetailItem label="Father Email" value={isEditing ? editForm.fatherEmail : selected.fatherEmail} isEditing={isEditing} field="fatherEmail" onChange={(val) => setEditForm(f => ({ ...f, fatherEmail: val }))} />
+                                        <div className="col-span-2 h-px bg-border/20 my-1" />
+                                        <DetailItem label="Mother Name" value={isEditing ? editForm.motherName : selected.motherName} isEditing={isEditing} field="motherName" onChange={(val) => setEditForm(f => ({ ...f, motherName: val }))} />
+                                        <DetailItem label="Mother Contact" value={isEditing ? editForm.motherContact : selected.motherContact} isEditing={isEditing} field="motherContact" onChange={(val) => setEditForm(f => ({ ...f, motherContact: val }))} />
+                                        <DetailItem label="Mother Email" value={isEditing ? editForm.motherEmail : selected.motherEmail} isEditing={isEditing} field="motherEmail" onChange={(val) => setEditForm(f => ({ ...f, motherEmail: val }))} />
                                     </DetailSection>
+                                )}
 
-                                    <DetailSection title="Fee Tracking">
-                                        <div className="col-span-2">
-                                            <div className="rounded-xl border border-border bg-muted/30 p-4">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Monthly Payment Status</p>
-                                                        <h4 className="text-sm font-bold text-navy">Cycle: {new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</h4>
-                                                    </div>
-                                                    <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${getFeeStatus(selected).isDue ? "bg-destructive/10 text-destructive" : "bg-lime/20 text-lime-dark"}`}>
-                                                        {getFeeStatus(selected).label}
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    disabled={!getFeeStatus(selected).isDue}
-                                                    onClick={() => handleMarkFeePaid(selected)}
-                                                    className="w-full flex items-center justify-center gap-2 rounded-lg bg-navy py-2.5 text-xs font-bold text-white shadow-xl shadow-navy/20 hover:bg-navy-dark disabled:opacity-50 disabled:grayscale transition-all active:scale-95"
-                                                >
-                                                    <CheckCircle className="h-4 w-4" /> Mark as Paid for {new Date().toLocaleString('default', { month: 'long' })}
-                                                </button>
-                                                <p className="mt-2 text-[10px] text-center text-muted-foreground italic">Last payment recorded for: {selected.lastPaidMonth || "Never"}</p>
+                                <DetailSection title="Academy Details">
+                                    <DetailItem label="Squad/Level" value={isEditing ? editForm.squadLevel : selected.squadLevel} isEditing={isEditing} field="squadLevel" type="select" options={["Beginner", "Intermediate", "Advanced", "Elite"]} onChange={(val) => setEditForm(f => ({ ...f, squadLevel: val }))} />
+                                    <DetailItem label="T-Shirt Size" value={isEditing ? editForm.tshirtSize : selected.tshirtSize} isEditing={isEditing} field="tshirtSize" type="select" options={["XS", "S", "M", "L", "XL", "XXL"]} onChange={(val) => setEditForm(f => ({ ...f, tshirtSize: val }))} />
+                                    <DetailItem label="Sessions/Month" value={isEditing ? editForm.sessionsPerMonth : selected.sessionsPerMonth} type="number" isEditing={isEditing} field="sessionsPerMonth" onChange={(val) => setEditForm(f => ({ ...f, sessionsPerMonth: val }))} />
+                                    <DetailItem label="Fees/Month" value={isEditing ? editForm.feesPerMonth : selected.feesPerMonth} isEditing={isEditing} field="feesPerMonth" onChange={(val) => setEditForm(f => ({ ...f, feesPerMonth: val }))} />
+                                    <DetailItem label="Enrollment Date" value={isEditing ? editForm.enrollmentDate : selected.enrollmentDate} type="date" isEditing={isEditing} field="enrollmentDate" onChange={(val) => setEditForm(f => ({ ...f, enrollmentDate: val }))} />
+                                </DetailSection>
+
+                                <DetailSection title="Fee Tracking">
+                                    <div className="col-span-2 rounded-2xl border border-border bg-muted/30 p-5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Anniversary: {selected.feesDate || "Not Set"}</p>
+                                                <h4 className="text-sm font-bold text-navy">Cycle: {new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</h4>
                                             </div>
+                                            <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${getFeeStatus(selected).isDue ? "bg-destructive/10 text-destructive animate-pulse" : "bg-lime/20 text-lime-dark"}`}>
+                                                {getFeeStatus(selected).label}
+                                            </span>
                                         </div>
-                                    </DetailSection>
+                                        <button
+                                            disabled={!getFeeStatus(selected).isDue}
+                                            onClick={() => handleMarkFeePaid(selected)}
+                                            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-navy text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-navy/20 hover:bg-navy-dark disabled:opacity-30 disabled:grayscale transition-all"
+                                        >
+                                            <CheckCircle className="h-4 w-4" /> Mark Paid for {new Date().toLocaleString('default', { month: 'long' })}
+                                        </button>
+                                        <p className="mt-3 text-[9px] text-center text-muted-foreground font-bold tracking-tight">Last Paid Cycle: <span className="text-navy">{selected.lastPaidMonth || "None Recorded"}</span></p>
+                                    </div>
+                                </DetailSection>
 
-                                    <DetailSection title="Admin Remarks">
+                                <div className="md:col-span-2 space-y-6">
+                                    <DetailSection title="Admin Remarks & Internal Notes">
                                         <div className="col-span-2">
                                             {isEditing ? (
                                                 <textarea
                                                     value={editForm.remarks || ""}
                                                     onChange={(e) => setEditForm(f => ({ ...f, remarks: e.target.value }))}
                                                     placeholder="Add internal remarks/notes here..."
-                                                    className="w-full rounded-xl border border-border bg-muted/30 p-3 text-sm font-medium focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5 min-h-[80px]"
+                                                    className="w-full min-h-[100px] rounded-2xl border border-border bg-muted/10 p-4 text-sm font-medium focus:ring-4 focus:ring-navy/5 focus:outline-none"
                                                 />
                                             ) : (
-                                                <p className="text-sm font-medium leading-relaxed text-muted-foreground italic">
-                                                    {selected.remarks || "No remarks added yet."}
-                                                </p>
+                                                <div className="rounded-2xl bg-muted/10 p-4 min-h-[60px] border border-border/30">
+                                                    <p className="text-sm font-medium leading-relaxed text-muted-foreground italic">
+                                                        {selected.remarks || "No internal remarks added yet."}
+                                                    </p>
+                                                </div>
                                             )}
                                         </div>
                                     </DetailSection>
 
-                                    <DetailSection title="Declaration">
-                                        <DetailItem label="Signed By" value={isEditing ? editForm.studentSignature : selected.studentSignature} isEditing={isEditing} field="studentSignature" onChange={(val) => setEditForm(f => ({ ...f, studentSignature: val }))} />
-                                        <DetailItem label="Date" value={isEditing ? editForm.declarationDate : selected.declarationDate} type="date" isEditing={isEditing} field="declarationDate" onChange={(val) => setEditForm(f => ({ ...f, declarationDate: val }))} />
-                                        <DetailItem
-                                            label="Proof Type"
-                                            value={isEditing ? editForm.proofType : selected.proofType}
-                                            isEditing={isEditing}
-                                            field="proofType"
-                                            type="select"
-                                            options={["Aadhaar Card", "PAN Card", "Driving Licence", "Passport", "Voter ID"]}
-                                            onChange={(val) => setEditForm(f => ({ ...f, proofType: val }))}
-                                        />
-                                    </DetailSection>
-
-                                    <DetailSection title="Purchase History">
-                                        <div className="col-span-2 space-y-4">
-                                            {/* History List */}
-                                            <div className="max-h-[200px] overflow-y-auto rounded-xl border border-border bg-muted/20 scrollbar-hide">
-                                                {isFetchingPurchases ? (
-                                                    <div className="p-4 text-center"><Loader2 className="mx-auto h-4 w-4 animate-spin text-muted-foreground" /></div>
-                                                ) : purchases.length === 0 ? (
-                                                    <p className="p-4 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">No purchase records</p>
-                                                ) : (
-                                                    <table className="w-full text-left text-[11px]">
-                                                        <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
-                                                            <tr>
-                                                                <th className="px-3 py-2 font-black uppercase tracking-tighter">Date</th>
-                                                                <th className="px-3 py-2 font-black uppercase tracking-tighter">Item</th>
-                                                                <th className="px-3 py-2 font-black uppercase tracking-tighter">Qty</th>
-                                                                <th className="px-3 py-2 font-black uppercase tracking-tighter text-right">Price</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-border/50">
-                                                            {purchases.map(p => (
-                                                                <tr key={p.id}>
-                                                                    <td className="px-3 py-2 text-muted-foreground">{new Date(p.purchaseDate).toLocaleDateString()}</td>
-                                                                    <td className="px-3 py-2 font-bold text-navy">{p.item}</td>
-                                                                    <td className="px-3 py-2">{p.quantity}</td>
-                                                                    <td className="px-3 py-2 text-right font-black">₹{p.totalPrice}</td>
+                                    <DetailSection title="Purchase History & Shop Activity">
+                                        <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="md:col-span-2 overflow-hidden rounded-2xl border border-border bg-muted/20">
+                                                <div className="max-h-[250px] overflow-y-auto scrollbar-hide">
+                                                    {isFetchingPurchases ? (
+                                                        <div className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
+                                                    ) : purchases.length === 0 ? (
+                                                        <div className="py-10 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-30">No shop activity</div>
+                                                    ) : (
+                                                        <table className="w-full text-left">
+                                                            <thead className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-border">
+                                                                <tr className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                                                    <th className="px-4 py-3">Date</th>
+                                                                    <th className="px-4 py-3">Item</th>
+                                                                    <th className="px-4 py-3">Qty</th>
+                                                                    <th className="px-4 py-3 text-right">Price</th>
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                )}
-                                            </div>
-
-                                            {/* Add New Form */}
-                                            <form onSubmit={handleAddPurchase} className="rounded-xl border border-dashed border-border p-4 bg-muted/10 space-y-3">
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="col-span-2">
-                                                        <input
-                                                            placeholder="Item Name (e.g. Cork box)"
-                                                            required
-                                                            className="h-8 w-full rounded-lg border border-border bg-white px-3 text-[11px] font-bold focus:outline-none"
-                                                            value={purchaseForm.item}
-                                                            onChange={e => setPurchaseForm({ ...purchaseForm, item: e.target.value })}
-                                                        />
-                                                    </div>
-                                                    <input
-                                                        type="number"
-                                                        placeholder="Qty"
-                                                        required
-                                                        className="h-8 w-full rounded-lg border border-border bg-white px-3 text-[11px] font-bold focus:outline-none"
-                                                        value={purchaseForm.quantity}
-                                                        onChange={e => setPurchaseForm({ ...purchaseForm, quantity: e.target.value })}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        placeholder="Total Price"
-                                                        required
-                                                        className="h-8 w-full rounded-lg border border-border bg-white px-3 text-[11px] font-bold focus:outline-none"
-                                                        value={purchaseForm.totalPrice}
-                                                        onChange={e => setPurchaseForm({ ...purchaseForm, totalPrice: e.target.value })}
-                                                    />
-                                                    <div className="col-span-2">
-                                                        <input
-                                                            type="date"
-                                                            required
-                                                            className="h-8 w-full rounded-lg border border-border bg-white px-3 text-[11px] font-bold focus:outline-none"
-                                                            value={purchaseForm.purchaseDate}
-                                                            onChange={e => setPurchaseForm({ ...purchaseForm, purchaseDate: e.target.value })}
-                                                        />
-                                                    </div>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-border/50 text-[11px]">
+                                                                {purchases.map(p => (
+                                                                    <tr key={p.id}>
+                                                                        <td className="px-4 py-2.5 text-muted-foreground">{new Date(p.purchaseDate).toLocaleDateString()}</td>
+                                                                        <td className="px-4 py-2.5 font-bold text-navy">{p.item}</td>
+                                                                        <td className="px-4 py-2.5 font-black">{p.quantity}</td>
+                                                                        <td className="px-4 py-2.5 text-right font-black">₹{p.totalPrice}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    )}
                                                 </div>
-                                                <button
-                                                    type="submit"
-                                                    disabled={isSavingPurchase}
-                                                    className="w-full flex h-8 items-center justify-center gap-2 rounded-lg bg-navy text-white text-[10px] font-black uppercase tracking-widest hover:bg-navy-dark disabled:opacity-50"
-                                                >
-                                                    {isSavingPurchase ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Add Record
+                                            </div>
+                                            <form onSubmit={handleAddPurchase} className="rounded-2xl border-2 border-dashed border-border p-4 space-y-3 flex flex-col justify-center">
+                                                <h5 className="text-[9px] font-black uppercase tracking-widest text-navy text-center mb-1">New Purchase</h5>
+                                                <input placeholder="Item (e.g. Shoes)" required className="h-9 w-full rounded-xl border border-border bg-white px-3 text-xs font-bold" value={purchaseForm.item} onChange={e => setPurchaseForm({ ...purchaseForm, item: e.target.value })} />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input type="number" placeholder="Qty" required className="h-9 w-full rounded-xl border border-border bg-white px-3 text-xs font-bold" value={purchaseForm.quantity} onChange={e => setPurchaseForm({ ...purchaseForm, quantity: e.target.value })} />
+                                                    <input type="number" placeholder="Price" required className="h-9 w-full rounded-xl border border-border bg-white px-3 text-xs font-bold" value={purchaseForm.totalPrice} onChange={e => setPurchaseForm({ ...purchaseForm, totalPrice: e.target.value })} />
+                                                </div>
+                                                <input type="date" required className="h-9 w-full rounded-xl border border-border bg-white px-3 text-xs font-bold" value={purchaseForm.purchaseDate} onChange={e => setPurchaseForm({ ...purchaseForm, purchaseDate: e.target.value })} />
+                                                <button type="submit" disabled={isSavingPurchase} className="h-9 w-full rounded-xl bg-navy text-white text-[9px] font-black uppercase tracking-widest hover:bg-navy-dark shadow-lg shadow-navy/10">
+                                                    {isSavingPurchase ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : "Add Record"}
                                                 </button>
                                             </form>
                                         </div>
                                     </DetailSection>
 
-                                    <DetailSection title="Documents">
-                                        <div className="col-span-2 flex gap-3 mt-1">
-                                            {selected.photoUrl && (
-                                                <a href={selected.photoUrl} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-muted py-3 text-xs font-bold text-navy hover:bg-muted/80 transition-all active:scale-95 shadow-sm border border-border/50">
-                                                    <Eye className="h-4 w-4" /> View Photo
-                                                </a>
-                                            )}
-                                            {selected.proofUrl && (
-                                                <a href={selected.proofUrl} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-navy text-primary-foreground py-3 text-xs font-bold hover:opacity-90 transition-all active:scale-95 shadow-md">
-                                                    <FileText className="h-4 w-4" /> View ID Proof
-                                                </a>
-                                            )}
-                                        </div>
-                                    </DetailSection>
-                                </div>
-                                <div className="p-6 bg-muted/20 border-t border-border/50">
-                                    <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                        <span>ID: #{selected.id.toString().padStart(4, '0')}</span>
-                                        <span>Registered {new Date(selected.createdAt).toLocaleDateString()}</span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <DetailSection title="Documents & Identity Proofs">
+                                            <div className="flex flex-col gap-2">
+                                                {selected.proofUrl && (
+                                                    <a href={selected.proofUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-xl bg-navy p-4 text-white hover:opacity-90 shadow-xl shadow-navy/20">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="rounded-lg bg-white/10 p-2"><FileText className="h-5 w-5" /></div>
+                                                            <div><p className="text-[10px] font-black uppercase tracking-widest opacity-60">ID Proof Document</p><p className="text-xs font-bold">{selected.proofType || "Identity Proof"}</p></div>
+                                                        </div>
+                                                        <ExternalLink className="h-4 w-4 opacity-40" />
+                                                    </a>
+                                                )}
+                                                <div className="p-4 rounded-xl border border-border/50 bg-muted/10 text-center">
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase">System Registered ID: <span className="text-navy">#{selected.id.toString().padStart(5, '0')}</span></p>
+                                                </div>
+                                            </div>
+                                        </DetailSection>
+
+                                        <DetailSection title="Signed Declaration">
+                                            <div className="rounded-2xl border border-border/50 bg-muted/5 p-4 space-y-4">
+                                                <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight space-y-1">
+                                                    <p>Anniversary Check: {selected.feesDate}</p>
+                                                    <p>Date of Decl: {selected.declarationDate}</p>
+                                                </div>
+                                                <div className="flex items-center justify-center p-4 border border-dashed border-border/50 rounded-xl bg-white">
+                                                    <p className="font-serif italic text-navy font-bold text-lg select-none">{selected.studentSignature}</p>
+                                                </div>
+                                                <p className="text-[8px] text-center font-bold text-muted-foreground uppercase">Digital Signature Verified</p>
+                                            </div>
+                                        </DetailSection>
                                     </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="sticky top-8 flex h-[60vh] flex-col items-center justify-center rounded-[3rem] border-2 border-dashed border-border bg-card/50 text-center p-12 transition-all hover:bg-card">
-                                <div className="mb-6 rounded-full bg-navy/5 p-8">
-                                    <User className="h-16 w-16 text-navy/20" />
-                                </div>
-                                <h3 className="text-xl font-bold text-navy">Registration Details</h3>
-                                <p className="mt-2 text-sm text-muted-foreground max-w-[200px]">Select a profile from the list to view all captured field data.</p>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
-            {/* Modals */}
             {showResetModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="w-full max-w-sm rounded-[2rem] border border-border bg-card p-8 shadow-2xl">

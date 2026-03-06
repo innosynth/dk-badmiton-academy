@@ -24,9 +24,10 @@ export default async function handler(
             return response.status(403).json({ error: 'Unauthorized: Admin access required' });
         }
 
+        const valuesToInsert: any = { phone, password, name, role: 'coach' };
         const newUser = await db
             .insert(users)
-            .values({ phone, password, name, role: 'coach' })
+            .values(valuesToInsert)
             .returning();
 
         return response.status(200).json(newUser[0]);

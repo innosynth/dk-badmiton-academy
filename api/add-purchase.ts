@@ -26,15 +26,17 @@ export default async function handler(
 
         const dateToUse = purchaseDate || new Date().toISOString().split('T')[0];
 
+        const purchaseData: any = {
+            registrationId,
+            item,
+            quantity: Number(quantity),
+            totalPrice: totalPrice.toString(),
+            purchaseDate: dateToUse,
+        };
+
         const newPurchase = await db
             .insert(purchases)
-            .values({
-                registrationId,
-                item,
-                quantity: Number(quantity),
-                totalPrice: totalPrice.toString(),
-                purchaseDate: dateToUse,
-            })
+            .values(purchaseData)
             .returning();
 
         return response.status(200).json(newPurchase[0]);
