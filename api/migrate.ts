@@ -7,10 +7,15 @@ export default async function handler(
     response: VercelResponse,
 ) {
     try {
-        // Create users table
+        // Drop tables if they exist to recreate them correctly from schema.ts
+        await db.execute(sql`DROP TABLE IF EXISTS purchases;`);
+        await db.execute(sql`DROP TABLE IF EXISTS users;`);
+
+        // Create users table EXACTLY as per schema.ts
         await db.execute(sql`
-            CREATE TABLE IF NOT EXISTS users (
-                phone TEXT PRIMARY KEY,
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                phone TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 name TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'coach',
@@ -18,9 +23,9 @@ export default async function handler(
             );
         `);
 
-        // Create purchases table
+        // Create purchases table EXACTLY as per schema.ts
         await db.execute(sql`
-            CREATE TABLE IF NOT EXISTS purchases (
+            CREATE TABLE purchases (
                 id SERIAL PRIMARY KEY,
                 "registrationId" INTEGER NOT NULL REFERENCES registrations(id),
                 "item" TEXT NOT NULL,
@@ -31,21 +36,13 @@ export default async function handler(
             );
         `);
 
-        // Insert default admin if not exists
+        // Insert default admin
         await db.execute(sql`
             INSERT INTO users (phone, password, name, role) 
-            VALUES ('9363141888', 'Admin@2025$', 'Academy Admin', 'admin')
-            ON CONFLICT (phone) DO NOTHING;
+            VALUES ('9363141888', 'Admin@2025$', 'Academy Admin', 'admin');
         `);
 
-        // Add remarks column to registrations if it doesn't exist
-        try {
-            await db.execute(sql`ALTER TABLE registrations ADD COLUMN remarks TEXT;`);
-        } catch (e) {
-            // Probably already exists
-        }
-
-        return response.status(200).json({ message: 'Migration successful' });
+        return response.status(200).json({ message: 'Re-Migration successful - Tables recreated' });
     } catch (error: any) {
         console.error('Migration error:', error);
         return response.status(500).json({ error: error.message });
