@@ -40,6 +40,7 @@ const schema = z.object({
   // URLs (filled after upload)
   photoUrl: z.string().optional(),
   proofUrl: z.string().optional(),
+  feesDate: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -92,7 +93,7 @@ export default function RegistrationForm() {
   const [proofPreview, setProofPreview] = useState<string | null>(null);
   const [proofFileName, setProofFileName] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, trigger, setValue, watch } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, trigger, setValue, watch, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { type: "student" }
   });
@@ -159,6 +160,13 @@ export default function RegistrationForm() {
 
       if (!res.ok) throw new Error("Failed to save registration");
 
+      reset();
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setProofFile(null);
+      setProofPreview(null);
+      setProofFileName(null);
+
       setSubmitted(true);
       toast.dismiss();
       toast.success("Registration completed successfully!");
@@ -180,7 +188,12 @@ export default function RegistrationForm() {
           <h2 className="mb-2 text-3xl font-bold text-navy">Registration Submitted!</h2>
           <p className="text-muted-foreground mb-6">Welcome to D K Badminton Academy.</p>
           <button
-            onClick={() => { setSubmitted(false); setStep(0); setRegType(null); }}
+            onClick={() => {
+              setSubmitted(false);
+              setStep(0);
+              setRegType(null);
+              reset();
+            }}
             className="rounded-xl bg-navy px-8 py-3 text-sm font-semibold text-primary-foreground hover:bg-navy-dark transition-colors"
           >
             Submit Another
@@ -339,9 +352,10 @@ export default function RegistrationForm() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <SelectField label="T-Shirt Size" name="tshirtSize" register={register} options={["XS", "S", "M", "L", "XL", "XXL"]} />
                 <FormField label="No. of Sessions / Month" name="sessionsPerMonth" register={register} type="number" />
-                <FormField label="Enrollment Date" name="enrollmentDate" register={register} type="date" readOnly />
+                <FormField label="Enrollment Date" name="enrollmentDate" register={register} type="date" />
                 <FormField label="Fees Per Month (₹)" name="feesPerMonth" register={register} />
-                <SelectField label="Squad / Level" name="squadLevel" register={register} options={["Beginner", "Intermediate", "Advanced", "Elite"]} className="sm:col-span-2" />
+                <FormField label="Fees Date" name="feesDate" register={register} type="date" />
+                <SelectField label="Squad / Level" name="squadLevel" register={register} options={["Beginner", "Intermediate", "Advanced", "Elite"]} />
               </div>
             </div>
           </div>
@@ -357,7 +371,7 @@ export default function RegistrationForm() {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <FormField label="Full Name as Signature *" name="studentSignature" register={register} placeholder="Type your full name" error={errors.studentSignature?.message} />
-                <FormField label="Date" name="declarationDate" register={register} type="date" readOnly />
+                <FormField label="Date" name="declarationDate" register={register} type="date" />
               </div>
               <div className="space-y-3">
                 <SelectField label="Proof of Identity Type" name="proofType" register={register} options={["Aadhaar Card", "PAN Card", "Driving Licence", "Passport", "Voter ID"]} />

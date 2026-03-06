@@ -27,5 +27,33 @@ CREATE TABLE IF NOT EXISTS registrations (
   "proofType" TEXT,
   "photoUrl" TEXT,
   "proofUrl" TEXT,
+  "isActive" BOOLEAN DEFAULT TRUE,
+  "feesDate" DATE,
+  "lastPaidMonth" TEXT,
+  "remarks" TEXT,
+  "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  phone TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'coach',
+  "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Default admin user (Phone: 9363141888, Password: Admin@2025$)
+INSERT INTO users (phone, password, name, role) 
+VALUES ('9363141888', 'Admin@2025$', 'Academy Admin', 'admin')
+ON CONFLICT (phone) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS purchases (
+  id SERIAL PRIMARY KEY,
+  "registrationId" INTEGER NOT NULL REFERENCES registrations(id),
+  "item" TEXT NOT NULL,
+  "quantity" INTEGER NOT NULL,
+  "totalPrice" NUMERIC NOT NULL,
+  "purchaseDate" DATE NOT NULL DEFAULT CURRENT_DATE,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

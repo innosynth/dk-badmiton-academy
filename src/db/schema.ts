@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, date, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, date, boolean, integer, numeric } from "drizzle-orm/pg-core";
 
 export const registrations = pgTable("registrations", {
     id: serial("id").primaryKey(),
@@ -33,5 +33,28 @@ export const registrations = pgTable("registrations", {
     // Files
     photoUrl: text("photoUrl"),
     proofUrl: text("proofUrl"),
+    isActive: boolean("isActive").default(true),
+    feesDate: date("feesDate"),
+    lastPaidMonth: text("lastPaidMonth"),
+    remarks: text("remarks"),
+    createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export const users = pgTable("users", {
+    id: serial("id").primaryKey(),
+    phone: text("phone").notNull().unique(),
+    password: text("password").notNull(),
+    name: text("name").notNull(),
+    role: text("role").notNull().default("coach"), // 'admin' or 'coach'
+    createdAt: timestamp("createdAt").defaultNow(),
+});
+
+export const purchases = pgTable("purchases", {
+    id: serial("id").primaryKey(),
+    registrationId: integer("registrationId").references(() => registrations.id).notNull(),
+    item: text("item").notNull(), // e.g., 'Shuttlecocks'
+    quantity: integer("quantity").notNull(),
+    totalPrice: numeric("totalPrice").notNull(),
+    purchaseDate: date("purchaseDate").notNull().defaultNow(),
     createdAt: timestamp("createdAt").defaultNow(),
 });
