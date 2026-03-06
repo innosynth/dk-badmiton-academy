@@ -21,7 +21,6 @@ interface Registration {
     motherContact: string;
     motherEmail: string;
     tshirtSize: string;
-    sessionsPerMonth: string;
     enrollmentDate: string;
     feesPerMonth: string;
     squadLevel: string;
@@ -745,7 +744,7 @@ export default function AdminPortal() {
                                 <DetailSection title="Academy Details">
                                     <DetailItem label="Squad/Level" value={isEditing ? editForm.squadLevel : selected.squadLevel} isEditing={isEditing} field="squadLevel" type="select" options={["Beginner", "Intermediate", "Advanced", "Elite"]} onChange={(val) => setEditForm(f => ({ ...f, squadLevel: val }))} />
                                     <DetailItem label="T-Shirt Size" value={isEditing ? editForm.tshirtSize : selected.tshirtSize} isEditing={isEditing} field="tshirtSize" type="select" options={["XS", "S", "M", "L", "XL", "XXL"]} onChange={(val) => setEditForm(f => ({ ...f, tshirtSize: val }))} />
-                                    <DetailItem label="Sessions/Month" value={isEditing ? editForm.sessionsPerMonth : selected.sessionsPerMonth} type="number" isEditing={isEditing} field="sessionsPerMonth" onChange={(val) => setEditForm(f => ({ ...f, sessionsPerMonth: val }))} />
+                                    <DetailItem label="Fees Date" value={isEditing ? editForm.feesDate : selected.feesDate} type="date" isEditing={isEditing} field="feesDate" onChange={(val) => setEditForm(f => ({ ...f, feesDate: val }))} />
                                     <DetailItem label="Fees/Month" value={isEditing ? editForm.feesPerMonth : selected.feesPerMonth} isEditing={isEditing} field="feesPerMonth" onChange={(val) => setEditForm(f => ({ ...f, feesPerMonth: val }))} />
                                     <DetailItem label="Enrollment Date" value={isEditing ? editForm.enrollmentDate : selected.enrollmentDate} type="date" isEditing={isEditing} field="enrollmentDate" onChange={(val) => setEditForm(f => ({ ...f, enrollmentDate: val }))} />
                                 </DetailSection>
@@ -754,7 +753,7 @@ export default function AdminPortal() {
                                     <div className="col-span-2 rounded-2xl border border-border bg-muted/30 p-5">
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Anniversary: {selected.feesDate || "Not Set"}</p>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Date: {selected.feesDate || "Not Set"}</p>
                                                 <h4 className="text-sm font-bold text-navy">Cycle: {new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</h4>
                                             </div>
                                             <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${getFeeStatus(selected).isDue ? "bg-destructive/10 text-destructive animate-pulse" : "bg-lime/20 text-lime-dark"}`}>
@@ -860,7 +859,7 @@ export default function AdminPortal() {
                                         <DetailSection title="Signed Declaration">
                                             <div className="rounded-2xl border border-border/50 bg-muted/5 p-4 space-y-4">
                                                 <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight space-y-1">
-                                                    <p>Anniversary Check: {selected.feesDate}</p>
+                                                    <p>Payment Date Check: {selected.feesDate}</p>
                                                     <p>Date of Decl: {selected.declarationDate}</p>
                                                 </div>
                                                 <div className="flex items-center justify-center p-4 border border-dashed border-border/50 rounded-xl bg-white">

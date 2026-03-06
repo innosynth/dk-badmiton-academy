@@ -21,7 +21,6 @@ export const registrations = pgTable("registrations", {
     motherEmail: text("motherEmail"),
     // Office info
     tshirtSize: text("tshirtSize"),
-    sessionsPerMonth: text("sessionsPerMonth"),
     enrollmentDate: date("enrollmentDate"),
     feesPerMonth: text("feesPerMonth"),
     squadLevel: text("squadLevel"),

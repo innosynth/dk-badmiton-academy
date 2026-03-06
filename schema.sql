@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS registrations (
   "motherContact" TEXT,
   "motherEmail" TEXT,
   "tshirtSize" TEXT,
-  "sessionsPerMonth" TEXT,
   "enrollmentDate" DATE,
   "feesPerMonth" TEXT,
   "squadLevel" TEXT,

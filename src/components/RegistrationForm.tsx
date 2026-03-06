@@ -28,7 +28,6 @@ const schema = z.object({
   motherEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   // Office Use
   tshirtSize: z.string().optional(),
-  sessionsPerMonth: z.string().optional(),
   enrollmentDate: z.string().optional(),
   feesPerMonth: z.string().optional(),
   squadLevel: z.string().optional(),
@@ -349,7 +348,6 @@ export default function RegistrationForm() {
             <div className="rounded-2xl border-2 border-dashed border-navy/20 bg-navy/5 p-6 space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <SelectField label="T-Shirt Size" name="tshirtSize" register={register} options={["XS", "S", "M", "L", "XL", "XXL"]} />
-                <FormField label="No. of Sessions / Month" name="sessionsPerMonth" register={register} type="number" />
                 <FormField label="Enrollment Date" name="enrollmentDate" register={register} type="date" />
                 <FormField label="Fees Per Month (₹)" name="feesPerMonth" register={register} />
                 <FormField label="Fees Date" name="feesDate" register={register} type="date" />
