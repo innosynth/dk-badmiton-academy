@@ -9,7 +9,6 @@ interface Registration {
     dob: string;
     age: string;
     sex: string;
-    nationality: string;
     schoolName: string;
     siblingsName: string;
     regNo: string;
@@ -68,8 +67,11 @@ export default function AdminPortal() {
     // New modals state
     const [showResetModal, setShowResetModal] = useState(false);
     const [showCoachModal, setShowCoachModal] = useState(false);
+    const [showManageCoachesModal, setShowManageCoachesModal] = useState(false);
     const [resetForm, setResetForm] = useState({ current: "", new: "" });
     const [coachForm, setCoachForm] = useState({ phone: "", password: "", name: "" });
+    const [allUsers, setAllUsers] = useState<any[]>([]);
+    const [editingUser, setEditingUser] = useState<any | null>(null);
 
     // Purchase history state
     const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -104,8 +106,24 @@ export default function AdminPortal() {
                     console.error(err);
                     setLoading(false);
                 });
+
+            if (user?.role === 'admin') {
+                fetchUsers();
+            }
         }
     }, [isAuthenticated]);
+
+    const fetchUsers = async () => {
+        try {
+            const res = await fetch("/api/users");
+            if (res.ok) {
+                const data = await res.json();
+                setAllUsers(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     useEffect(() => {
         if (selected) {
@@ -188,8 +206,54 @@ export default function AdminPortal() {
             toast.success("Coach created successfully");
             setShowCoachModal(false);
             setCoachForm({ phone: "", password: "", name: "" });
+            fetchUsers();
         } else {
             toast.error(data.error);
+        }
+    };
+
+    const handleDeleteUser = async (userId: number) => {
+        if (!user || user.role !== 'admin') return;
+        if (!confirm("Are you sure you want to remove this account? This action cannot be undone.")) return;
+
+        try {
+            const res = await fetch("/api/delete-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ adminPhone: user.phone, userId }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(data.message);
+                fetchUsers();
+            } else {
+                toast.error(data.error);
+            }
+        } catch (e) {
+            toast.error("Failed to delete account");
+        }
+    };
+
+    const handleUpdateUserInfo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || user.role !== 'admin' || !editingUser) return;
+
+        try {
+            const res = await fetch("/api/update-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ adminPhone: user.phone, userId: editingUser.id, ...editingUser }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("User updated successfully");
+                setEditingUser(null);
+                fetchUsers();
+            } else {
+                toast.error(data.error);
+            }
+        } catch (e) {
+            toast.error("Failed to update user");
         }
     };
 
@@ -422,22 +486,29 @@ export default function AdminPortal() {
                         </div>
                         <div className="h-8 w-px bg-border/60" />
                         <div className="text-center">
-                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Students</p>
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Active Students</p>
                             <p className="text-xl font-black text-navy">
-                                {filteredRegistrations.filter((r) => r.type === "student").length}
+                                {filteredRegistrations.filter((r) => r.type === "student" && r.isActive).length}
                             </p>
                         </div>
                         {user?.role === 'admin' && (
                             <>
                                 <div className="h-8 w-px bg-border/60" />
                                 <div className="text-center">
-                                    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Members</p>
+                                    <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Active Members</p>
                                     <p className="text-xl font-black text-lime-dark">
-                                        {filteredRegistrations.filter((r) => r.type === "member").length}
+                                        {filteredRegistrations.filter((r) => r.type === "member" && r.isActive).length}
                                     </p>
                                 </div>
                             </>
                         )}
+                        <div className="h-8 w-px bg-border/60" />
+                        <div className="text-center">
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Inactive</p>
+                            <p className="text-xl font-black text-destructive">
+                                {filteredRegistrations.filter((r) => !r.isActive).length}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -450,9 +521,14 @@ export default function AdminPortal() {
                                 <Lock className="h-4 w-4" /> Reset Password
                             </button>
                             {user?.role === 'admin' && (
-                                <button onClick={() => setShowCoachModal(true)} className="flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-xs font-bold text-white hover:bg-navy-dark transition-all shadow-md">
-                                    <Briefcase className="h-4 w-4" /> Add Coach
-                                </button>
+                                <>
+                                    <button onClick={() => setShowCoachModal(true)} className="flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-xs font-bold text-white hover:bg-navy-dark transition-all shadow-md">
+                                        <Briefcase className="h-4 w-4" /> Add Coach
+                                    </button>
+                                    <button onClick={() => setShowManageCoachesModal(true)} className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-bold text-navy hover:bg-navy hover:text-white transition-all">
+                                        <Users className="h-4 w-4" /> Manage Coaches
+                                    </button>
+                                </>
                             )}
                         </div>
                     </div>
@@ -619,7 +695,6 @@ export default function AdminPortal() {
                                         <DetailItem label="DOB" value={isEditing ? editForm.dob : selected.dob} type="date" isEditing={isEditing} field="dob" onChange={(val) => setEditForm(f => ({ ...f, dob: val }))} />
                                         <DetailItem label="Age" value={isEditing ? editForm.age : selected.age} isEditing={isEditing} field="age" onChange={(val) => setEditForm(f => ({ ...f, age: val }))} />
                                         <DetailItem label="Sex" value={isEditing ? editForm.sex : selected.sex} isEditing={isEditing} field="sex" onChange={(val) => setEditForm(f => ({ ...f, sex: val }))} />
-                                        <DetailItem label="Nationality" value={isEditing ? editForm.nationality : selected.nationality} isEditing={isEditing} field="nationality" onChange={(val) => setEditForm(f => ({ ...f, nationality: val }))} />
                                         <DetailItem label="Area" value={isEditing ? editForm.area : selected.area} isEditing={isEditing} field="area" onChange={(val) => setEditForm(f => ({ ...f, area: val }))} />
                                         {selected.type === "student" ? (
                                             <DetailItem label="School" value={isEditing ? editForm.schoolName : selected.schoolName} isEditing={isEditing} field="schoolName" onChange={(val) => setEditForm(f => ({ ...f, schoolName: val }))} />
@@ -661,7 +736,7 @@ export default function AdminPortal() {
                                         />
                                         <DetailItem label="Sessions/Month" value={isEditing ? editForm.sessionsPerMonth : selected.sessionsPerMonth} type="number" isEditing={isEditing} field="sessionsPerMonth" onChange={(val) => setEditForm(f => ({ ...f, sessionsPerMonth: val }))} />
                                         <DetailItem label="Fees/Month" value={isEditing ? editForm.feesPerMonth : selected.feesPerMonth} isEditing={isEditing} field="feesPerMonth" onChange={(val) => setEditForm(f => ({ ...f, feesPerMonth: val }))} />
-                                        <DetailItem label="Fees Due Anniversary" value={isEditing ? editForm.feesDate : selected.feesDate} type="date" isEditing={isEditing} field="feesDate" onChange={(val) => setEditForm(f => ({ ...f, feesDate: val }))} />
+                                        <DetailItem label="Fees Due" value={isEditing ? editForm.feesDate : selected.feesDate} type="date" isEditing={isEditing} field="feesDate" onChange={(val) => setEditForm(f => ({ ...f, feesDate: val }))} />
                                         <DetailItem label="Enrollment Date" value={isEditing ? editForm.enrollmentDate : selected.enrollmentDate} type="date" isEditing={isEditing} field="enrollmentDate" onChange={(val) => setEditForm(f => ({ ...f, enrollmentDate: val }))} />
                                         <DetailItem label="Registration Link" value={isEditing ? editForm.regNo : selected.regNo} isEditing={isEditing} field="regNo" onChange={(val) => setEditForm(f => ({ ...f, regNo: val }))} />
                                     </DetailSection>
@@ -867,6 +942,122 @@ export default function AdminPortal() {
                                 <button type="button" onClick={() => setShowCoachModal(false)} className="flex-1 rounded-xl bg-muted py-3 text-xs font-black uppercase tracking-widest text-muted-foreground">Cancel</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showManageCoachesModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+                        <div className="bg-navy p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-black uppercase tracking-widest">Manage Coaches</h2>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Active Team Members & Access Control</p>
+                            </div>
+                            <button onClick={() => { setShowManageCoachesModal(false); setEditingUser(null); }} className="rounded-full bg-white/10 p-2 hover:bg-white/20 transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {editingUser ? (
+                                <form onSubmit={handleUpdateUserInfo} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Full Name</label>
+                                            <input
+                                                type="text"
+                                                value={editingUser.name}
+                                                onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Phone Number</label>
+                                            <input
+                                                type="tel"
+                                                value={editingUser.phone}
+                                                onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Password (Optional)</label>
+                                            <input
+                                                type="password"
+                                                placeholder="Leave blank to keep current"
+                                                onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Role</label>
+                                            <select
+                                                value={editingUser.role}
+                                                onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            >
+                                                <option value="coach">Coach</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <button type="submit" className="flex-1 rounded-xl bg-navy py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-navy-dark shadow-lg shadow-navy/20">
+                                            Save Updates
+                                        </button>
+                                        <button type="button" onClick={() => setEditingUser(null)} className="flex-1 rounded-xl bg-muted py-3 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-colors">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2 scrollbar-hide">
+                                    {allUsers.filter(u => u.phone !== user?.phone).length === 0 ? (
+                                        <div className="text-center py-10">
+                                            <Users className="h-12 w-12 text-muted-foreground opacity-20 mx-auto mb-2" />
+                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">No other coaches found</p>
+                                        </div>
+                                    ) : (
+                                        allUsers.filter(u => u.phone !== user?.phone).map(u => (
+                                            <div key={u.id} className="group flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4 transition-all hover:bg-card hover:shadow-md">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-navy/10 text-navy uppercase font-black">
+                                                        {u.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-black text-navy">{u.name}</h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-[10px] font-bold text-muted-foreground">{u.phone}</p>
+                                                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-navy text-white' : 'bg-lime text-navy'}`}>
+                                                                {u.role}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => setEditingUser(u)}
+                                                        className="p-2 rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all"
+                                                        title="Edit Coach"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(u.id)}
+                                                        className="p-2 rounded-lg bg-destructive/5 text-destructive hover:bg-destructive hover:text-white transition-all"
+                                                        title="Delete Coach"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

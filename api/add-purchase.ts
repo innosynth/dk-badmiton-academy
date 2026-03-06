@@ -12,7 +12,7 @@ export default async function handler(
     }
 
     try {
-        const { registrationId, item, quantity, totalPrice, purchaseDate } = request.body;
+        const { id, createdAt, registrationId, item, quantity, totalPrice, purchaseDate } = request.body;
 
         if (!registrationId || !item || !quantity || !totalPrice) {
             return response.status(400).json({ error: 'All fields are required' });
@@ -24,6 +24,8 @@ export default async function handler(
             return response.status(404).json({ error: 'Registration not found' });
         }
 
+        const dateToUse = purchaseDate || new Date().toISOString().split('T')[0];
+
         const newPurchase = await db
             .insert(purchases)
             .values({
@@ -31,7 +33,7 @@ export default async function handler(
                 item,
                 quantity: Number(quantity),
                 totalPrice: totalPrice.toString(),
-                purchaseDate: purchaseDate || new Date().toISOString().split('T')[0],
+                purchaseDate: dateToUse,
             })
             .returning();
 

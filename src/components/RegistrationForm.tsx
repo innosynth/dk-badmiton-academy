@@ -14,7 +14,6 @@ const schema = z.object({
   dob: z.string().optional(),
   age: z.string().optional(),
   sex: z.string().optional(),
-  nationality: z.string().optional(),
   schoolName: z.string().optional(),
   siblingsName: z.string().optional(),
   regNo: z.string().optional(),
@@ -327,7 +326,6 @@ export default function RegistrationForm() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Nationality" name="nationality" register={register} />
                 <FormField label={regType === "student" ? "School Name" : "Occupation"} name={regType === "student" ? "schoolName" : "occupation"} register={register} />
                 <FormField label="Area" name="area" register={register} />
               </div>

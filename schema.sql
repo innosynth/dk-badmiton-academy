@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS registrations (
   dob DATE,
   age TEXT,
   sex TEXT,
-  nationality TEXT,
   "schoolName" TEXT,
   "siblingsName" TEXT,
   "regNo" TEXT,

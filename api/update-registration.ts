@@ -12,10 +12,16 @@ export default async function handler(
     }
 
     try {
-        const { id, ...updateData } = request.body;
+        const { id, createdAt, ...body } = request.body;
 
         if (!id) {
             return response.status(400).json({ error: 'Registration ID is required' });
+        }
+
+        // Sanitize data: convert empty strings to null
+        const updateData: any = {};
+        for (const [key, value] of Object.entries(body)) {
+            updateData[key] = value === '' ? null : value;
         }
 
         const updated = await db

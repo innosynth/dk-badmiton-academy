@@ -11,10 +11,11 @@ export default async function handler(
     }
 
     try {
-        const body = request.body;
+        const { id, createdAt, ...body } = request.body;
 
         // Sanitize data: convert empty strings to null
         const sanitizedData: any = {};
+
         for (const [key, value] of Object.entries(body)) {
             sanitizedData[key] = value === '' ? null : value;
         }
@@ -35,8 +36,7 @@ export default async function handler(
             body: request.body
         });
         return response.status(500).json({
-            error: 'Internal Server Error',
-            details: error.message
+            error: error.message || 'Internal Server Error'
         });
     }
 }

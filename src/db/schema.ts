@@ -7,7 +7,6 @@ export const registrations = pgTable("registrations", {
     dob: date("dob"),
     age: text("age"),
     sex: text("sex"),
-    nationality: text("nationality"),
     schoolName: text("schoolName"),
     siblingsName: text("siblingsName"),
     regNo: text("regNo"),
