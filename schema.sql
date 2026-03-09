@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   "isActive" BOOLEAN DEFAULT TRUE,
   "feesDate" DATE,
   "lastPaidMonth" TEXT,
+  "paidMonthsCount" INTEGER DEFAULT 0,
   "remarks" TEXT,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

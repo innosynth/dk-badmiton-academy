@@ -34,6 +34,7 @@ export const registrations = pgTable("registrations", {
     isActive: boolean("isActive").default(true),
     feesDate: date("feesDate"),
     lastPaidMonth: text("lastPaidMonth"),
+    paidMonthsCount: integer("paidMonthsCount").default(0),
     remarks: text("remarks"),
     createdAt: timestamp("createdAt").defaultNow(),
 });

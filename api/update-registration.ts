@@ -24,6 +24,10 @@ export default async function handler(
             updateData[key] = value === '' ? null : value;
         }
 
+        if (updateData.paidMonthsCount !== undefined && updateData.paidMonthsCount !== null) {
+            updateData.paidMonthsCount = parseInt(updateData.paidMonthsCount.toString(), 10) || 0;
+        }
+
         const updated = await db
             .update(registrations)
             .set(updateData)

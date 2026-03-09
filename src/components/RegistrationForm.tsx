@@ -39,6 +39,8 @@ const schema = z.object({
   photoUrl: z.string().optional(),
   proofUrl: z.string().optional(),
   feesDate: z.string().optional(),
+  paidMonthsCount: z.string().optional(),
+  remarks: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -351,6 +353,7 @@ export default function RegistrationForm() {
                 <FormField label="Enrollment Date" name="enrollmentDate" register={register} type="date" />
                 <FormField label="Fees Per Month (₹)" name="feesPerMonth" register={register} />
                 <FormField label="Fees Date" name="feesDate" register={register} type="date" />
+                <FormField label="Months Paid" name="paidMonthsCount" register={register} placeholder="e.g. 1" />
                 <SelectField label="Squad / Level" name="squadLevel" register={register} options={["Beginner", "Intermediate", "Advanced", "Elite"]} />
               </div>
             </div>
@@ -381,6 +384,14 @@ export default function RegistrationForm() {
                   </div>
                   <input id="proof-upload" type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) { setProofFile(file); setProofFileName(file.name); if (file.type.startsWith("image/")) setProofPreview(URL.createObjectURL(file)); } }} />
                 </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Internal Remarks / Notes (Optional)</label>
+                <textarea
+                  {...register("remarks")}
+                  placeholder="Any additional notes or internal remarks..."
+                  className="rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/20 transition-all min-h-[80px]"
+                />
               </div>
             </div>
           </div>

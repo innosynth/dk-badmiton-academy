@@ -32,6 +32,7 @@ interface Registration {
     isActive: boolean;
     feesDate: string;
     lastPaidMonth: string;
+    paidMonthsCount: number;
     remarks: string;
     createdAt: string;
 }
@@ -77,6 +78,7 @@ export default function AdminPortal() {
     const [isFetchingPurchases, setIsFetchingPurchases] = useState(false);
     const [purchaseForm, setPurchaseForm] = useState({ item: "", quantity: "1", totalPrice: "", purchaseDate: new Date().toISOString().split('T')[0] });
     const [isSavingPurchase, setIsSavingPurchase] = useState(false);
+    const [monthsPaying, setMonthsPaying] = useState(1);
 
     useEffect(() => {
         const savedUser = localStorage.getItem("adminUser");
@@ -281,20 +283,41 @@ export default function AdminPortal() {
         }
     };
 
-    const handleMarkFeePaid = async (reg: Registration) => {
-        const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+    const handleMarkFeePaid = async (reg: Registration, months: number = 1) => {
+        const today = new Date();
+        const currentMonthStr = today.toISOString().slice(0, 7);
+
+        let year, month;
+        if (reg.lastPaidMonth && reg.lastPaidMonth >= currentMonthStr) {
+            // Start from month after last paid month
+            const lastParts = reg.lastPaidMonth.split('-').map(Number);
+            year = lastParts[0];
+            month = lastParts[1]; // JS Date month (1-12 becomes 0-11, so if it was Jan (01), we want Feb (month index 1))
+        } else {
+            // Start from current month
+            year = today.getFullYear();
+            month = today.getMonth();
+        }
+
+        const targetDate = new Date(year, month + months - 1, 1);
+        const newPaidMonth = targetDate.toISOString().slice(0, 7);
+
         const loadingToast = toast.loading("Updating fee status...");
         try {
             const res = await fetch("/api/update-registration", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: reg.id, lastPaidMonth: currentMonth }),
+                body: JSON.stringify({
+                    id: reg.id,
+                    lastPaidMonth: newPaidMonth,
+                    paidMonthsCount: (reg.paidMonthsCount || 0) + months
+                }),
             });
             if (!res.ok) throw new Error("Update failed");
             const updated = await res.json();
             setRegistrations(prev => prev.map(r => r.id === reg.id ? updated : r));
             if (selected?.id === reg.id) setSelected(updated);
-            toast.success("Fee marked as paid for current month");
+            toast.success(`Marked as paid for ${months} month(s) until ${newPaidMonth}`);
         } catch (e: any) {
             toast.error(e.message);
         } finally {
@@ -308,8 +331,8 @@ export default function AdminPortal() {
         const today = new Date();
         const currentMonthStr = today.toISOString().slice(0, 7);
 
-        // If already paid for this month
-        if (reg.lastPaidMonth === currentMonthStr) return { isDue: false, label: "Paid" };
+        // If already paid for this month OR future months
+        if (reg.lastPaidMonth && reg.lastPaidMonth >= currentMonthStr) return { isDue: false, label: "Paid" };
 
         // Alert on the 5th of current month if date was set on 6th of previous? 
         // User said: "if date is set as Mar 6 on April 5 an alert should be sent"
@@ -746,28 +769,61 @@ export default function AdminPortal() {
                                     <DetailItem label="T-Shirt Size" value={isEditing ? editForm.tshirtSize : selected.tshirtSize} isEditing={isEditing} field="tshirtSize" type="select" options={["XS", "S", "M", "L", "XL", "XXL"]} onChange={(val) => setEditForm(f => ({ ...f, tshirtSize: val }))} />
                                     <DetailItem label="Fees Date" value={isEditing ? editForm.feesDate : selected.feesDate} type="date" isEditing={isEditing} field="feesDate" onChange={(val) => setEditForm(f => ({ ...f, feesDate: val }))} />
                                     <DetailItem label="Fees/Month" value={isEditing ? editForm.feesPerMonth : selected.feesPerMonth} isEditing={isEditing} field="feesPerMonth" onChange={(val) => setEditForm(f => ({ ...f, feesPerMonth: val }))} />
+                                    <DetailItem label="Months Paid" value={isEditing ? (editForm.paidMonthsCount || 0).toString() : (selected.paidMonthsCount || 0).toString()} isEditing={isEditing} field="paidMonthsCount" onChange={(val) => setEditForm(f => ({ ...f, paidMonthsCount: parseInt(val) || 0 }))} />
                                     <DetailItem label="Enrollment Date" value={isEditing ? editForm.enrollmentDate : selected.enrollmentDate} type="date" isEditing={isEditing} field="enrollmentDate" onChange={(val) => setEditForm(f => ({ ...f, enrollmentDate: val }))} />
                                 </DetailSection>
 
                                 <DetailSection title="Fee Tracking">
-                                    <div className="col-span-2 rounded-2xl border border-border bg-muted/30 p-5">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Date: {selected.feesDate || "Not Set"}</p>
-                                                <h4 className="text-sm font-bold text-navy">Cycle: {new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</h4>
+                                    <div className="col-span-2 overflow-hidden rounded-2xl border border-border bg-card">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-muted/50 border-b border-border">
+                                                <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                    <th className="px-4 py-3">Next Due Cycle</th>
+                                                    <th className="px-4 py-3">Last Paid</th>
+                                                    <th className="px-4 py-3">Total Paid</th>
+                                                    <th className="px-4 py-3 text-right">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50 text-[11px] font-bold">
+                                                <tr>
+                                                    <td className="px-4 py-3 text-navy">
+                                                        {getFeeStatus(selected).isDue ? new Date().toLocaleString('default', { month: 'long' }) : (selected.lastPaidMonth ? new Date(selected.lastPaidMonth + "-01").toLocaleString('default', { month: 'long', year: 'numeric' }) : "None")}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground">
+                                                        {selected.lastPaidMonth || "None"}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-lime-dark">
+                                                        {selected.paidMonthsCount || 0} Months
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className={`inline-block rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${getFeeStatus(selected).isDue ? "bg-destructive/10 text-destructive animate-pulse" : "bg-lime/20 text-lime-dark"}`}>
+                                                            {getFeeStatus(selected).label}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <div className="p-4 bg-muted/20 border-t border-border flex items-center gap-4">
+                                            <div className="w-1/3">
+                                                <label className="text-[8px] font-black uppercase text-muted-foreground mb-1 block">Months</label>
+                                                <select
+                                                    value={monthsPaying}
+                                                    onChange={(e) => setMonthsPaying(Number(e.target.value))}
+                                                    className="h-9 w-full rounded-xl border border-border bg-white px-2 text-xs font-bold text-navy focus:outline-none"
+                                                >
+                                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                                                        <option key={m} value={m}>{m} Mo</option>
+                                                    ))}
+                                                </select>
                                             </div>
-                                            <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest ${getFeeStatus(selected).isDue ? "bg-destructive/10 text-destructive animate-pulse" : "bg-lime/20 text-lime-dark"}`}>
-                                                {getFeeStatus(selected).label}
-                                            </span>
+                                            <button
+                                                onClick={() => handleMarkFeePaid(selected, monthsPaying)}
+                                                className="flex-1 mt-4 h-9 flex items-center justify-center gap-2 rounded-xl bg-navy text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-navy/10 hover:bg-navy-dark transition-all active:scale-95"
+                                            >
+                                                <CheckCircle className="h-4 w-4" />
+                                                Quick Pay ({monthsPaying} Month{monthsPaying > 1 ? 's' : ''})
+                                            </button>
                                         </div>
-                                        <button
-                                            disabled={!getFeeStatus(selected).isDue}
-                                            onClick={() => handleMarkFeePaid(selected)}
-                                            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-navy text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-navy/20 hover:bg-navy-dark disabled:opacity-30 disabled:grayscale transition-all"
-                                        >
-                                            <CheckCircle className="h-4 w-4" /> Mark Paid for {new Date().toLocaleString('default', { month: 'long' })}
-                                        </button>
-                                        <p className="mt-3 text-[9px] text-center text-muted-foreground font-bold tracking-tight">Last Paid Cycle: <span className="text-navy">{selected.lastPaidMonth || "None Recorded"}</span></p>
                                     </div>
                                 </DetailSection>
 
@@ -838,37 +894,6 @@ export default function AdminPortal() {
                                         </div>
                                     </DetailSection>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                        <DetailSection title="Documents & Identity Proofs">
-                                            <div className="flex flex-col gap-2">
-                                                {selected.proofUrl && (
-                                                    <a href={selected.proofUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-xl bg-navy p-4 text-white hover:opacity-90 shadow-xl shadow-navy/20">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="rounded-lg bg-white/10 p-2"><FileText className="h-5 w-5" /></div>
-                                                            <div><p className="text-[10px] font-black uppercase tracking-widest opacity-60">ID Proof Document</p><p className="text-xs font-bold">{selected.proofType || "Identity Proof"}</p></div>
-                                                        </div>
-                                                        <ExternalLink className="h-4 w-4 opacity-40" />
-                                                    </a>
-                                                )}
-                                                <div className="p-4 rounded-xl border border-border/50 bg-muted/10 text-center">
-                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase">System Registered ID: <span className="text-navy">#{selected.id.toString().padStart(5, '0')}</span></p>
-                                                </div>
-                                            </div>
-                                        </DetailSection>
-
-                                        <DetailSection title="Signed Declaration">
-                                            <div className="rounded-2xl border border-border/50 bg-muted/5 p-4 space-y-4">
-                                                <div className="text-[9px] font-bold text-muted-foreground uppercase leading-tight space-y-1">
-                                                    <p>Payment Date Check: {selected.feesDate}</p>
-                                                    <p>Date of Decl: {selected.declarationDate}</p>
-                                                </div>
-                                                <div className="flex items-center justify-center p-4 border border-dashed border-border/50 rounded-xl bg-white">
-                                                    <p className="font-serif italic text-navy font-bold text-lg select-none">{selected.studentSignature}</p>
-                                                </div>
-                                                <p className="text-[8px] text-center font-bold text-muted-foreground uppercase">Digital Signature Verified</p>
-                                            </div>
-                                        </DetailSection>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -877,7 +902,7 @@ export default function AdminPortal() {
             )}
 
             {showResetModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="w-full max-w-sm rounded-[2rem] border border-border bg-card p-8 shadow-2xl">
                         <h2 className="mb-6 text-xl font-black uppercase tracking-widest text-navy">Reset Password</h2>
                         <form onSubmit={handleResetPassword} className="space-y-4">
@@ -893,7 +918,7 @@ export default function AdminPortal() {
             )}
 
             {showCoachModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="w-full max-w-sm rounded-[2rem] border border-border bg-card p-8 shadow-2xl">
                         <h2 className="mb-6 text-xl font-black uppercase tracking-widest text-navy">Add Coach</h2>
                         <form onSubmit={handleCreateCoach} className="space-y-4">
@@ -910,7 +935,7 @@ export default function AdminPortal() {
             )}
 
             {showManageCoachesModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
                         <div className="bg-navy p-6 text-white flex justify-between items-center">
                             <div>

@@ -20,6 +20,16 @@ export default async function handler(
             sanitizedData[key] = value === '' ? null : value;
         }
 
+        if (sanitizedData.paidMonthsCount) {
+            sanitizedData.paidMonthsCount = parseInt(sanitizedData.paidMonthsCount.toString(), 10) || 0;
+
+            if (sanitizedData.paidMonthsCount > 0 && !sanitizedData.lastPaidMonth) {
+                const today = new Date();
+                const targetDate = new Date(today.getFullYear(), today.getMonth() + sanitizedData.paidMonthsCount - 1, 1);
+                sanitizedData.lastPaidMonth = targetDate.toISOString().slice(0, 7);
+            }
+        }
+
         console.log('Sanitized registration data:', sanitizedData);
 
         const result = await db.insert(registrations).values(sanitizedData).returning();
