@@ -183,7 +183,7 @@ export default function AdminPortal() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch("/api/login", {
+            const res = await fetch("/api/auth", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(loginData),
@@ -212,10 +212,10 @@ export default function AdminPortal() {
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        const res = await fetch("/api/reset-password", {
+        const res = await fetch("/api/auth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone: user.phone, currentPassword: resetForm.current, newPassword: resetForm.new }),
+            body: JSON.stringify({ action: 'resetPassword', phone: user.phone, currentPassword: resetForm.current, newPassword: resetForm.new }),
         });
         const data = await res.json();
         if (res.ok) {
@@ -230,7 +230,7 @@ export default function AdminPortal() {
     const handleCreateCoach = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || user.role !== 'admin') return;
-        const res = await fetch("/api/create-coach", {
+        const res = await fetch("/api/users", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ adminPhone: user.phone, ...coachForm }),
@@ -251,8 +251,8 @@ export default function AdminPortal() {
         if (!confirm("Are you sure you want to remove this account? This action cannot be undone.")) return;
 
         try {
-            const res = await fetch("/api/delete-user", {
-                method: "POST",
+            const res = await fetch("/api/users", {
+                method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ adminPhone: user.phone, userId }),
             });
@@ -273,8 +273,8 @@ export default function AdminPortal() {
         if (!user || user.role !== 'admin' || !editingUser) return;
 
         try {
-            const res = await fetch("/api/update-user", {
-                method: "POST",
+            const res = await fetch("/api/users", {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ adminPhone: user.phone, userId: editingUser.id, ...editingUser }),
             });
@@ -297,7 +297,7 @@ export default function AdminPortal() {
         setIsSavingGuest(true);
 
         try {
-            const res = await fetch("/api/add-guest", {
+            const res = await fetch("/api/guests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ adminPhone: user.phone, ...guestForm }),
@@ -324,8 +324,8 @@ export default function AdminPortal() {
         setIsSavingGuest(true);
 
         try {
-            const res = await fetch("/api/update-guest", {
-                method: "POST",
+            const res = await fetch("/api/guests", {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ adminPhone: user.phone, id: editingGuest.id, ...editingGuest }),
             });
@@ -349,8 +349,8 @@ export default function AdminPortal() {
         if (!confirm("Are you sure you want to delete this guest? This action cannot be undone.")) return;
 
         try {
-            const res = await fetch("/api/delete-guest", {
-                method: "POST",
+            const res = await fetch("/api/guests", {
+                method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ adminPhone: user.phone, guestId }),
             });
@@ -371,7 +371,7 @@ export default function AdminPortal() {
         if (!selected) return;
         setIsSavingPurchase(true);
         try {
-            const res = await fetch("/api/add-purchase", {
+            const res = await fetch("/api/purchases", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ registrationId: selected.id, ...purchaseForm }),
@@ -412,8 +412,8 @@ export default function AdminPortal() {
 
         const loadingToast = toast.loading("Updating fee status...");
         try {
-            const res = await fetch("/api/update-registration", {
-                method: "POST",
+            const res = await fetch("/api/registrations", {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     id: reg.id,
@@ -469,8 +469,8 @@ export default function AdminPortal() {
         const loadingToast = toast.loading(`${newStatus ? 'Activating' : 'Deactivating'} ${reg.studentName}...`);
 
         try {
-            const res = await fetch("/api/update-registration", {
-                method: "POST",
+            const res = await fetch("/api/registrations", {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id: reg.id, isActive: newStatus }),
             });
@@ -501,8 +501,8 @@ export default function AdminPortal() {
         const loadingToast = toast.loading("Saving changes...");
 
         try {
-            const res = await fetch("/api/update-registration", {
-                method: "POST",
+            const res = await fetch("/api/registrations", {
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(editForm),
             });

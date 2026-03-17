@@ -64,7 +64,7 @@ export const guests = pgTable("guests", {
     data: text("data"),
     courtNumber: text("courtNumber"),
     paymentDetails: text("paymentDetails"),
-    earnings: text("earnings"),
+    visitTime: timestamp("visitTime"),
     isActive: boolean("isActive").default(true),
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").defaultNow(),

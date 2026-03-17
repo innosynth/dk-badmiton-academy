@@ -152,7 +152,7 @@ export default function RegistrationForm() {
       }
 
       toast.loading("Saving registration details...");
-      const res = await fetch("/api/register", {
+      const res = await fetch("/api/registrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(finalData),
