@@ -57,3 +57,15 @@ export const purchases = pgTable("purchases", {
     purchaseDate: date("purchaseDate").notNull().defaultNow(),
     createdAt: timestamp("createdAt").defaultNow(),
 });
+
+export const guests = pgTable("guests", {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    data: text("data"),
+    courtNumber: text("courtNumber"),
+    paymentDetails: text("paymentDetails"),
+    earnings: text("earnings"),
+    isActive: boolean("isActive").default(true),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").defaultNow(),
+});

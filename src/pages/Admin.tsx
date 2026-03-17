@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus } from "lucide-react";
+import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash } from "lucide-react";
 import { toast } from "sonner";
 
 interface Registration {
@@ -53,6 +53,18 @@ interface UserSession {
     role: string;
 }
 
+interface Guest {
+    id: number;
+    name: string;
+    data: string | null;
+    courtNumber: string | null;
+    paymentDetails: string | null;
+    earnings: string | null;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export default function AdminPortal() {
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,6 +91,14 @@ export default function AdminPortal() {
     const [purchaseForm, setPurchaseForm] = useState({ item: "", quantity: "1", totalPrice: "", purchaseDate: new Date().toISOString().split('T')[0] });
     const [isSavingPurchase, setIsSavingPurchase] = useState(false);
     const [monthsPaying, setMonthsPaying] = useState(1);
+
+    // Guest management state (Admin only)
+    const [showGuestModal, setShowGuestModal] = useState(false);
+    const [showManageGuestsModal, setShowManageGuestsModal] = useState(false);
+    const [guests, setGuests] = useState<Guest[]>([]);
+    const [guestForm, setGuestForm] = useState({ name: "", data: "", courtNumber: "", paymentDetails: "", earnings: "" });
+    const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
+    const [isSavingGuest, setIsSavingGuest] = useState(false);
 
     useEffect(() => {
         const savedUser = localStorage.getItem("adminUser");
@@ -110,6 +130,7 @@ export default function AdminPortal() {
 
             if (user?.role === 'admin') {
                 fetchUsers();
+                fetchGuests();
             }
         }
     }, [isAuthenticated]);
@@ -120,6 +141,18 @@ export default function AdminPortal() {
             if (res.ok) {
                 const data = await res.json();
                 setAllUsers(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const fetchGuests = async () => {
+        try {
+            const res = await fetch("/api/guests");
+            if (res.ok) {
+                const data = await res.json();
+                setGuests(data);
             }
         } catch (e) {
             console.error(e);
@@ -255,6 +288,81 @@ export default function AdminPortal() {
             }
         } catch (e) {
             toast.error("Failed to update user");
+        }
+    };
+
+    const handleAddGuest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || user.role !== 'admin') return;
+        setIsSavingGuest(true);
+
+        try {
+            const res = await fetch("/api/add-guest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ adminPhone: user.phone, ...guestForm }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Guest added successfully");
+                setShowGuestModal(false);
+                setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", earnings: "" });
+                fetchGuests();
+            } else {
+                toast.error(data.error || "Failed to add guest");
+            }
+        } catch (e) {
+            toast.error("Failed to add guest");
+        } finally {
+            setIsSavingGuest(false);
+        }
+    };
+
+    const handleUpdateGuest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || user.role !== 'admin' || !editingGuest) return;
+        setIsSavingGuest(true);
+
+        try {
+            const res = await fetch("/api/update-guest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ adminPhone: user.phone, id: editingGuest.id, ...editingGuest }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Guest updated successfully");
+                setEditingGuest(null);
+                fetchGuests();
+            } else {
+                toast.error(data.error || "Failed to update guest");
+            }
+        } catch (e) {
+            toast.error("Failed to update guest");
+        } finally {
+            setIsSavingGuest(false);
+        }
+    };
+
+    const handleDeleteGuest = async (guestId: number) => {
+        if (!user || user.role !== 'admin') return;
+        if (!confirm("Are you sure you want to delete this guest? This action cannot be undone.")) return;
+
+        try {
+            const res = await fetch("/api/delete-guest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ adminPhone: user.phone, guestId }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Guest deleted successfully");
+                fetchGuests();
+            } else {
+                toast.error(data.error || "Failed to delete guest");
+            }
+        } catch (e) {
+            toast.error("Failed to delete guest");
         }
     };
 
@@ -549,6 +657,12 @@ export default function AdminPortal() {
                                     </button>
                                     <button onClick={() => setShowManageCoachesModal(true)} className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-bold text-navy hover:bg-navy hover:text-white transition-all">
                                         <Users className="h-4 w-4" /> Manage Coaches
+                                    </button>
+                                    <button onClick={() => setShowGuestModal(true)} className="flex items-center gap-2 rounded-lg bg-lime px-4 py-2 text-xs font-bold text-secondary-foreground hover:bg-lime/90 transition-all shadow-md">
+                                        <UserPlus className="h-4 w-4" /> Add Guest
+                                    </button>
+                                    <button onClick={() => setShowManageGuestsModal(true)} className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-bold text-navy hover:bg-navy hover:text-white transition-all">
+                                        <User className="h-4 w-4" /> Manage Guests
                                     </button>
                                 </>
                             )}
@@ -1043,6 +1157,244 @@ export default function AdminPortal() {
                                             </div>
                                         ))
                                     )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Guest Modal */}
+            {showGuestModal && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-[2rem] border border-border bg-card p-8 shadow-2xl">
+                        <h2 className="mb-6 text-xl font-black uppercase tracking-widest text-navy">Add New Guest</h2>
+                        <form onSubmit={handleAddGuest} className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Name <span className="text-destructive">*</span></label>
+                                <input
+                                    type="text"
+                                    placeholder="Guest Name"
+                                    required
+                                    value={guestForm.name}
+                                    onChange={e => setGuestForm({ ...guestForm, name: e.target.value })}
+                                    className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Data</label>
+                                <input
+                                    type="text"
+                                    placeholder="Additional data/notes"
+                                    value={guestForm.data}
+                                    onChange={e => setGuestForm({ ...guestForm, data: e.target.value })}
+                                    className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Court Number</label>
+                                <input
+                                    type="text"
+                                    placeholder="Court number assigned"
+                                    value={guestForm.courtNumber}
+                                    onChange={e => setGuestForm({ ...guestForm, courtNumber: e.target.value })}
+                                    className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Details</label>
+                                <input
+                                    type="text"
+                                    placeholder="Payment information"
+                                    value={guestForm.paymentDetails}
+                                    onChange={e => setGuestForm({ ...guestForm, paymentDetails: e.target.value })}
+                                    className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Earnings</label>
+                                <input
+                                    type="text"
+                                    placeholder="Earnings amount"
+                                    value={guestForm.earnings}
+                                    onChange={e => setGuestForm({ ...guestForm, earnings: e.target.value })}
+                                    className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={isSavingGuest}
+                                    className="flex-1 rounded-xl bg-navy py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-navy-dark shadow-lg shadow-navy/20 disabled:opacity-50"
+                                >
+                                    {isSavingGuest ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Add Guest"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowGuestModal(false); setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", earnings: "" }); }}
+                                    disabled={isSavingGuest}
+                                    className="flex-1 rounded-xl bg-muted py-3 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Manage Guests Modal */}
+            {showManageGuestsModal && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+                        <div className="bg-gradient-to-r from-navy to-navy-dark p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-black uppercase tracking-widest">Manage Guests</h2>
+                                <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Guest Records & Court Assignments</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowManageGuestsModal(false); setEditingGuest(null); }}
+                                className="rounded-full bg-white/10 p-2 hover:bg-white/20 transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {editingGuest ? (
+                                <form onSubmit={handleUpdateGuest} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Name <span className="text-destructive">*</span></label>
+                                            <input
+                                                type="text"
+                                                value={editingGuest.name}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, name: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Court Number</label>
+                                            <input
+                                                type="text"
+                                                value={editingGuest.courtNumber || ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, courtNumber: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Payment Details</label>
+                                            <input
+                                                type="text"
+                                                value={editingGuest.paymentDetails || ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, paymentDetails: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Earnings</label>
+                                            <input
+                                                type="text"
+                                                value={editingGuest.earnings || ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, earnings: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Data / Notes</label>
+                                            <textarea
+                                                value={editingGuest.data || ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, data: e.target.value })}
+                                                className="h-20 w-full rounded-xl border border-border bg-muted/30 px-4 py-2 text-xs font-bold focus:border-navy focus:outline-none resize-none"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={isSavingGuest}
+                                            className="flex-1 rounded-xl bg-navy py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-navy-dark shadow-lg shadow-navy/20 disabled:opacity-50"
+                                        >
+                                            {isSavingGuest ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Save Updates"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditingGuest(null)}
+                                            disabled={isSavingGuest}
+                                            className="flex-1 rounded-xl bg-muted py-3 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-colors disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-lime/10 text-lime-dark">
+                                                <UserPlus className="h-4 w-4" />
+                                            </div>
+                                            <span className="text-xs font-black uppercase tracking-widest text-navy">Total Guests: {guests.length}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { setShowManageGuestsModal(false); setShowGuestModal(true); }}
+                                            className="flex items-center gap-2 rounded-lg bg-lime px-4 py-2 text-xs font-black uppercase tracking-widest text-secondary-foreground hover:bg-lime/90 transition-all shadow-md"
+                                        >
+                                            <Plus className="h-4 w-4" /> Add New
+                                        </button>
+                                    </div>
+                                    <div className="max-h-[500px] overflow-y-auto space-y-2 pr-2 scrollbar-hide rounded-xl">
+                                        {guests.length === 0 ? (
+                                            <div className="text-center py-10">
+                                                <User className="h-12 w-12 text-muted-foreground opacity-20 mx-auto mb-2" />
+                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">No guests found</p>
+                                            </div>
+                                        ) : (
+                                            guests.map(guest => (
+                                                <div key={guest.id} className="group flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4 transition-all hover:bg-card hover:shadow-md">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-lime to-lime-dark text-white uppercase font-black text-lg">
+                                                            {guest.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-sm font-black text-navy">{guest.name}</h4>
+                                                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                                {guest.courtNumber && (
+                                                                    <span className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground bg-navy/5 px-2 py-0.5 rounded-full">
+                                                                        <Hash className="h-3 w-3" /> {guest.courtNumber}
+                                                                    </span>
+                                                                )}
+                                                                {guest.earnings && (
+                                                                    <span className="flex items-center gap-1 text-[9px] font-bold text-lime-dark bg-lime/10 px-2 py-0.5 rounded-full">
+                                                                        <DollarSign className="h-3 w-3" /> {guest.earnings}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[9px] font-medium text-muted-foreground mt-1 flex items-center gap-1">
+                                                                <Calendar className="h-3 w-3" /> Added {new Date(guest.createdAt).toLocaleDateString()}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => setEditingGuest(guest)}
+                                                            className="p-2 rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all"
+                                                            title="Edit Guest"
+                                                        >
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteGuest(guest.id)}
+                                                            className="p-2 rounded-lg bg-destructive/5 text-destructive hover:bg-destructive hover:text-white transition-all"
+                                                            title="Delete Guest"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
