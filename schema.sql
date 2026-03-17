@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS guests (
   "data" TEXT,
   "courtNumber" TEXT,
   "paymentDetails" TEXT,
-  "earnings" TEXT,
+  "visitTime" TIMESTAMP,
   "isActive" BOOLEAN DEFAULT TRUE,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP

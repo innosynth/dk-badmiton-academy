@@ -23,7 +23,7 @@ export default async function handler(
     // POST - Add new guest
     if (method === 'POST') {
         try {
-            const { name, data, courtNumber, paymentDetails, earnings, adminPhone } = request.body;
+            const { name, data, courtNumber, paymentDetails, visitTime, adminPhone } = request.body;
 
             // Validate admin access
             if (!adminPhone) {
@@ -47,7 +47,7 @@ export default async function handler(
                 data: data?.trim() || null,
                 courtNumber: courtNumber?.trim() || null,
                 paymentDetails: paymentDetails?.trim() || null,
-                earnings: earnings?.trim() || null,
+                visitTime: visitTime ? new Date(visitTime) : null,
             }).returning();
 
             return response.status(201).json(newGuest[0]);
@@ -60,7 +60,7 @@ export default async function handler(
     // PUT/PATCH - Update guest
     if (method === 'PUT' || method === 'PATCH') {
         try {
-            const { id, name, data, courtNumber, paymentDetails, earnings, adminPhone } = request.body;
+            const { id, name, data, courtNumber, paymentDetails, visitTime, adminPhone } = request.body;
 
             // Validate admin access
             if (!adminPhone) {
@@ -92,7 +92,7 @@ export default async function handler(
             if (data !== undefined) updateData.data = data?.trim() || null;
             if (courtNumber !== undefined) updateData.courtNumber = courtNumber?.trim() || null;
             if (paymentDetails !== undefined) updateData.paymentDetails = paymentDetails?.trim() || null;
-            if (earnings !== undefined) updateData.earnings = earnings?.trim() || null;
+            if (visitTime !== undefined) updateData.visitTime = visitTime ? new Date(visitTime) : null;
 
             const updatedGuest = await db.update(guests)
                 .set(updateData)

@@ -59,7 +59,7 @@ interface Guest {
     data: string | null;
     courtNumber: string | null;
     paymentDetails: string | null;
-    earnings: string | null;
+    visitTime: string | null;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -96,7 +96,7 @@ export default function AdminPortal() {
     const [showGuestModal, setShowGuestModal] = useState(false);
     const [showManageGuestsModal, setShowManageGuestsModal] = useState(false);
     const [guests, setGuests] = useState<Guest[]>([]);
-    const [guestForm, setGuestForm] = useState({ name: "", data: "", courtNumber: "", paymentDetails: "", earnings: "" });
+    const [guestForm, setGuestForm] = useState({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" });
     const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
     const [isSavingGuest, setIsSavingGuest] = useState(false);
 
@@ -306,7 +306,7 @@ export default function AdminPortal() {
             if (res.ok) {
                 toast.success("Guest added successfully");
                 setShowGuestModal(false);
-                setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", earnings: "" });
+                setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" });
                 fetchGuests();
             } else {
                 toast.error(data.error || "Failed to add guest");
@@ -1212,12 +1212,12 @@ export default function AdminPortal() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Earnings</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Visit Time</label>
                                 <input
-                                    type="text"
-                                    placeholder="Earnings amount"
-                                    value={guestForm.earnings}
-                                    onChange={e => setGuestForm({ ...guestForm, earnings: e.target.value })}
+                                    type="datetime-local"
+                                    placeholder="Visit time"
+                                    value={guestForm.visitTime}
+                                    onChange={e => setGuestForm({ ...guestForm, visitTime: e.target.value })}
                                     className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
                                 />
                             </div>
@@ -1231,7 +1231,7 @@ export default function AdminPortal() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => { setShowGuestModal(false); setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", earnings: "" }); }}
+                                    onClick={() => { setShowGuestModal(false); setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" }); }}
                                     disabled={isSavingGuest}
                                     className="flex-1 rounded-xl bg-muted py-3 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-colors disabled:opacity-50"
                                 >
@@ -1292,11 +1292,11 @@ export default function AdminPortal() {
                                             />
                                         </div>
                                         <div className="space-y-1.5 px-1">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Earnings</label>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Visit Time</label>
                                             <input
-                                                type="text"
-                                                value={editingGuest.earnings || ""}
-                                                onChange={(e) => setEditingGuest({ ...editingGuest, earnings: e.target.value })}
+                                                type="datetime-local"
+                                                value={editingGuest.visitTime ? editingGuest.visitTime.slice(0, 16) : ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, visitTime: e.target.value })}
                                                 className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
                                             />
                                         </div>
@@ -1364,9 +1364,9 @@ export default function AdminPortal() {
                                                                         <Hash className="h-3 w-3" /> {guest.courtNumber}
                                                                     </span>
                                                                 )}
-                                                                {guest.earnings && (
-                                                                    <span className="flex items-center gap-1 text-[9px] font-bold text-lime-dark bg-lime/10 px-2 py-0.5 rounded-full">
-                                                                        <DollarSign className="h-3 w-3" /> {guest.earnings}
+                                                                {guest.visitTime && (
+                                                                    <span className="flex items-center gap-1 text-[9px] font-bold text-navy bg-navy/5 px-2 py-0.5 rounded-full">
+                                                                        <Calendar className="h-3 w-3" /> {new Date(guest.visitTime).toLocaleString()}
                                                                     </span>
                                                                 )}
                                                             </div>
