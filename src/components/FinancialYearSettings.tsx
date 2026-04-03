@@ -155,9 +155,10 @@ export default function FinancialYearSettings({ adminPhone, isAdmin, onYearChang
                                 const isActive = year === activeYear;
                                 const IsCurrent = year === currentYear;
                                 const isHistorical = !IsCurrent;
-                                const isFuture = new Date(year.split('-')[1] + '-03-31') < new Date();
+                                const endDate = new Date(year.split('-')[1] + '-03-31');
+                                const isPastYear = endDate < new Date(new Date().getFullYear(), 0, 1);
 
-                                if (isFuture) return null;
+                                if (isPastYear) return null;
 
                                 return (
                                     <button

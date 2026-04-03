@@ -71,7 +71,7 @@ export function isCurrentFinancialYearStarted(): boolean {
 
 export function formatFinancialYearLabel(fiscalYear: string): string {
     const { startDate, endDate } = getFinancialYearDates(fiscalYear);
-    return `${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    return `${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}`;
 }
 
 export function getFinancialYearRangeQuery(fiscalYear: string) {
