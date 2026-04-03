@@ -1,7 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../src/db/index.js';
-import { registrations } from '../src/db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { registrations, financialYearSettings } from '../src/db/schema.js';
+import { eq, desc, gte, lte, and } from 'drizzle-orm';
+import { getFinancialYearRangeQuery, getCurrentFinancialYear } from '../src/lib/financialYear.js';
 
 export default async function handler(
     request: VercelRequest,
@@ -9,10 +10,24 @@ export default async function handler(
 ) {
     const method = request.method;
 
-    // GET - List all registrations
+    // GET - List all registrations with optional financial year filtering
     if (method === 'GET') {
         try {
-            const allRegistrations = await db.select().from(registrations).orderBy(desc(registrations.createdAt));
+            const { financialYear: requestedYear } = request.query;
+            
+            let query = db.select().from(registrations);
+            
+            if (requestedYear) {
+                const { startDate, endDate } = getFinancialYearRangeQuery(requestedYear as string);
+                query = db.select()
+                    .from(registrations)
+                    .where(and(
+                        gte(registrations.enrollmentDate, startDate),
+                        lte(registrations.enrollmentDate, endDate)
+                    ));
+            }
+            
+            const allRegistrations = await query.orderBy(desc(registrations.createdAt));
             return response.status(200).json(allRegistrations);
         } catch (error: any) {
             console.error('Fetch registrations error:', error);

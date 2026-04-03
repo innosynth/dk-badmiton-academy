@@ -1,7 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../src/db/index.js';
 import { purchases, registrations } from '../src/db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, gte, lte, and } from 'drizzle-orm';
+import { getFinancialYearRangeQuery } from '../src/lib/financialYear.js';
 
 export default async function handler(
     request: VercelRequest,
@@ -9,20 +10,29 @@ export default async function handler(
 ) {
     const method = request.method;
 
-    // GET - List purchases by registration
+    // GET - List purchases by registration with optional financial year filtering
     if (method === 'GET') {
         try {
-            const { registrationId } = request.query;
+            const { registrationId, financialYear } = request.query;
 
             if (!registrationId) {
                 return response.status(400).json({ error: 'Registration ID is required' });
             }
 
-            const data = await db
-                .select()
-                .from(purchases)
-                .where(eq(purchases.registrationId, Number(registrationId)))
-                .orderBy(desc(purchases.purchaseDate));
+            let query = db.select().from(purchases).where(eq(purchases.registrationId, Number(registrationId)));
+
+            if (financialYear) {
+                const { startDate, endDate } = getFinancialYearRangeQuery(financialYear as string);
+                query = db.select()
+                    .from(purchases)
+                    .where(and(
+                        eq(purchases.registrationId, Number(registrationId)),
+                        gte(purchases.purchaseDate, startDate),
+                        lte(purchases.purchaseDate, endDate)
+                    ));
+            }
+
+            const data = await query.orderBy(desc(purchases.purchaseDate));
 
             return response.status(200).json(data);
         } catch (error: any) {

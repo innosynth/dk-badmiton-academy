@@ -69,3 +69,13 @@ export const guests = pgTable("guests", {
     createdAt: timestamp("createdAt").defaultNow(),
     updatedAt: timestamp("updatedAt").defaultNow(),
 });
+
+export const financialYearSettings = pgTable("financialYearSettings", {
+    id: serial("id").primaryKey(),
+    fiscalYear: text("fiscalYear").notNull(),
+    startDate: date("startDate").notNull(),
+    endDate: date("endDate").notNull(),
+    isActive: boolean("isActive").default(false),
+    createdAt: timestamp("createdAt").defaultNow(),
+    updatedAt: timestamp("updatedAt").defaultNow(),
+});

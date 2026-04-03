@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash } from "lucide-react";
 import { toast } from "sonner";
+import FinancialYearSettings from "../components/FinancialYearSettings";
 
 interface Registration {
     id: number;
@@ -100,6 +101,9 @@ export default function AdminPortal() {
     const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
     const [isSavingGuest, setIsSavingGuest] = useState(false);
 
+    // Financial Year state
+    const [activeFinancialYear, setActiveFinancialYear] = useState<string>("");
+
     useEffect(() => {
         const savedUser = localStorage.getItem("adminUser");
         if (savedUser) {
@@ -117,16 +121,8 @@ export default function AdminPortal() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            fetch("/api/registrations")
-                .then((res) => res.json())
-                .then((data) => {
-                    setRegistrations(data);
-                    setLoading(false);
-                })
-                .catch((err) => {
-                    console.error(err);
-                    setLoading(false);
-                });
+            fetchActiveFinancialYear();
+            fetchRegistrations();
 
             if (user?.role === 'admin') {
                 fetchUsers();
@@ -134,6 +130,12 @@ export default function AdminPortal() {
             }
         }
     }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (isAuthenticated && activeFinancialYear) {
+            fetchRegistrations();
+        }
+    }, [activeFinancialYear]);
 
     const fetchUsers = async () => {
         try {
@@ -159,16 +161,53 @@ export default function AdminPortal() {
         }
     };
 
+    const fetchActiveFinancialYear = async () => {
+        try {
+            const res = await fetch("/api/financial-year?active=true");
+            if (res.ok) {
+                const data = await res.json();
+                setActiveFinancialYear(data.fiscalYear);
+            }
+        } catch (e) {
+            console.error("Failed to fetch active financial year:", e);
+        }
+    };
+
+    const fetchRegistrations = async () => {
+        setLoading(true);
+        try {
+            const url = activeFinancialYear 
+                ? `/api/registrations?financialYear=${activeFinancialYear}`
+                : "/api/registrations";
+            
+            const res = await fetch(url);
+            const data = await res.json();
+            setRegistrations(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFinancialYearChange = (year: string) => {
+        setActiveFinancialYear(year);
+    };
+
     useEffect(() => {
         if (selected) {
             fetchPurchases(selected.id);
         }
-    }, [selected]);
+    }, [selected, activeFinancialYear]);
 
     const fetchPurchases = async (regId: number) => {
         setIsFetchingPurchases(true);
         try {
-            const res = await fetch(`/api/purchases?registrationId=${regId}`);
+            const url = activeFinancialYear
+                ? `/api/purchases?registrationId=${regId}&financialYear=${activeFinancialYear}`
+                : `/api/purchases?registrationId=${regId}`;
+            
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setPurchases(data);
@@ -596,11 +635,16 @@ export default function AdminPortal() {
         <div className="min-h-screen bg-muted/30 p-4 sm:p-8">
             <div className="mx-auto max-w-7xl">
                 <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
                         <div>
                             <h1 className="text-3xl font-bold text-navy text-primary">Admin Portal</h1>
                             <p className="text-muted-foreground">Manage academy registrations and memberships</p>
                         </div>
+                        <FinancialYearSettings
+                            adminPhone={user?.phone || null}
+                            isAdmin={user?.role === 'admin'}
+                            onYearChange={handleFinancialYearChange}
+                        />
                         <button
                             onClick={handleLogout}
                             className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-all hover:bg-destructive hover:text-white"
