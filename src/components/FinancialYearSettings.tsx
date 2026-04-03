@@ -19,7 +19,7 @@ export default function FinancialYearSettings({ adminPhone, isAdmin, onYearChang
 
     const currentYear = getCurrentFinancialYear();
     const isAfterAprilFirst = isCurrentFinancialYearStarted();
-    const yearOptions = generateFinancialYearOptions(2020, 2030);
+    const yearOptions = generateFinancialYearOptions(2025, 2030);
 
     useEffect(() => {
         fetchActiveYear();

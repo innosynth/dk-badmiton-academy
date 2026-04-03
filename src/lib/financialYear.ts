@@ -23,6 +23,13 @@ export function getFinancialYearFromDate(date: Date): string {
     return `${year - 1}-${year}`;
 }
 
+export function getFinancialYearForDate(dateStr: string | null): string | null {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+    return getFinancialYearFromDate(date);
+}
+
 export function getFinancialYearDates(fiscalYear: string): FinancialYear {
     const [startYearStr, endYearStr] = fiscalYear.split('-');
     const startYear = parseInt(startYearStr, 10);

@@ -70,7 +70,7 @@ export const guests = pgTable("guests", {
     updatedAt: timestamp("updatedAt").defaultNow(),
 });
 
-export const financialYearSettings = pgTable("financialYearSettings", {
+export const financialYearSettings = pgTable("financialyearsettings", {
     id: serial("id").primaryKey(),
     fiscalYear: text("fiscalYear").notNull(),
     startDate: date("startDate").notNull(),

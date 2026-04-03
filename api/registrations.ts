@@ -15,20 +15,24 @@ export default async function handler(
         try {
             const { financialYear: requestedYear } = request.query;
             
-            let query = db.select().from(registrations);
-            
-            if (requestedYear) {
-                const { startDate, endDate } = getFinancialYearRangeQuery(requestedYear as string);
-                query = db.select()
-                    .from(registrations)
-                    .where(and(
-                        gte(registrations.enrollmentDate, startDate),
-                        lte(registrations.enrollmentDate, endDate)
-                    ));
+            if (!requestedYear) {
+                const allRegistrations = await db.select().from(registrations).orderBy(desc(registrations.createdAt));
+                return response.status(200).json(allRegistrations);
             }
             
-            const allRegistrations = await query.orderBy(desc(registrations.createdAt));
-            return response.status(200).json(allRegistrations);
+            const { startDate, endDate } = getFinancialYearRangeQuery(requestedYear as string);
+            
+            // Get all registrations first, then filter in JavaScript to handle null enrollment dates
+            const allRegistrations = await db.select().from(registrations).orderBy(desc(registrations.createdAt));
+            
+            const filteredRegistrations = allRegistrations.filter(reg => {
+                // Use enrollmentDate if available, otherwise use createdAt
+                const regDate = reg.enrollmentDate || reg.createdAt;
+                const dateObj = new Date(regDate);
+                return dateObj >= new Date(startDate) && dateObj <= new Date(endDate);
+            });
+            
+            return response.status(200).json(filteredRegistrations);
         } catch (error: any) {
             console.error('Fetch registrations error:', error);
             return response.status(500).json({ error: error.message });
