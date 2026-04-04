@@ -22,14 +22,12 @@ export default async function handler(
             
             const { startDate, endDate } = getFinancialYearRangeQuery(requestedYear as string);
             
-            // Get all registrations first, then filter in JavaScript to handle null enrollment dates
+            // Get all registrations and filter by createdAt (when entry was added)
             const allRegistrations = await db.select().from(registrations).orderBy(desc(registrations.createdAt));
             
             const filteredRegistrations = allRegistrations.filter(reg => {
-                // Use enrollmentDate if available, otherwise use createdAt
-                const regDate = reg.enrollmentDate || reg.createdAt;
-                const dateObj = new Date(regDate);
-                return dateObj >= new Date(startDate) && dateObj <= new Date(endDate);
+                const createdAt = new Date(reg.createdAt);
+                return createdAt >= new Date(startDate) && createdAt <= new Date(endDate);
             });
             
             return response.status(200).json(filteredRegistrations);
