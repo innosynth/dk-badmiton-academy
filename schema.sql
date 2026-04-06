@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS registrations (
   "lastPaidMonth" TEXT,
   "paidMonthsCount" INTEGER DEFAULT 0,
   "remarks" TEXT,
+  "financialYear" TEXT,
+  "financialYearRegNo" INTEGER,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

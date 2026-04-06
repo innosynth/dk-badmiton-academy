@@ -59,6 +59,18 @@ export default async function handler(
                 }
             }
 
+            // Auto-assign financial year and registration number
+            const today = new Date();
+            const fiscalYear = getCurrentFinancialYear();
+            sanitizedData.financialYear = fiscalYear;
+
+            // Get the next registration number for this financial year
+            const existingRegistrations = await db.select()
+                .from(registrations)
+                .where(eq(registrations.financialYear, fiscalYear));
+            
+            sanitizedData.financialYearRegNo = existingRegistrations.length + 1;
+
             console.log('Sanitized registration data:', sanitizedData);
 
             const result = await db.insert(registrations).values(sanitizedData).returning();

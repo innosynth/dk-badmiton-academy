@@ -35,6 +35,8 @@ interface Registration {
     lastPaidMonth: string;
     paidMonthsCount: number;
     remarks: string;
+    financialYear: string;
+    financialYearRegNo: number;
     createdAt: string;
 }
 
@@ -439,7 +441,7 @@ export default function AdminPortal() {
             // Start from month after last paid month
             const lastParts = reg.lastPaidMonth.split('-').map(Number);
             year = lastParts[0];
-            month = lastParts[1]; // JS Date month (1-12 becomes 0-11, so if it was Jan (01), we want Feb (month index 1))
+            month = lastParts[1] - 1; // Convert ISO month (1-12) to JS month (0-11)
         } else {
             // Start from current month
             year = today.getFullYear();
@@ -771,10 +773,12 @@ export default function AdminPortal() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <p className="text-sm font-black text-navy">{reg.studentName}</p>
-                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">ID: #{reg.id.toString().padStart(4, '0')}</p>
-                                                </td>
+                                                 <td className="px-6 py-4">
+                                                     <p className="text-sm font-black text-navy">{reg.studentName}</p>
+                                                     <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">
+                                                         FY: {reg.financialYearRegNo?.toString().padStart(4, '0') || reg.id.toString().padStart(4, '0')}
+                                                     </p>
+                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${reg.type === "student" ? "bg-navy/10 text-navy" : "bg-lime/20 text-lime-dark"}`}>
                                                         {reg.type}
@@ -792,15 +796,17 @@ export default function AdminPortal() {
                                                         {reg.isActive ? "Active" : "Inactive"}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    {status.isDue ? (
-                                                        <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter text-destructive animate-pulse">
-                                                            <FileText className="h-3 w-3" /> Due
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground opacity-50">Paid</span>
-                                                    )}
-                                                </td>
+                                                 <td className="px-6 py-4">
+                                                     {status.isDue ? (
+                                                         <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter text-destructive animate-pulse">
+                                                             <FileText className="h-3 w-3" /> Due
+                                                         </span>
+                                                     ) : status.label === "No Date Set" ? (
+                                                         <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground opacity-30">—</span>
+                                                     ) : (
+                                                         <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground opacity-50">Paid</span>
+                                                     )}
+                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <button
                                                         onClick={() => setSelected(reg)}

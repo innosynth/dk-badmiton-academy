@@ -36,6 +36,8 @@ export const registrations = pgTable("registrations", {
     lastPaidMonth: text("lastPaidMonth"),
     paidMonthsCount: integer("paidMonthsCount").default(0),
     remarks: text("remarks"),
+    financialYear: text("financialYear"),
+    financialYearRegNo: integer("financialYearRegNo"),
     createdAt: timestamp("createdAt").defaultNow(),
 });
 
