@@ -178,10 +178,10 @@ export default function AdminPortal() {
     const fetchRegistrations = async () => {
         setLoading(true);
         try {
-            const url = activeFinancialYear 
+            const url = activeFinancialYear
                 ? `/api/registrations?financialYear=${activeFinancialYear}`
                 : "/api/registrations";
-            
+
             const res = await fetch(url);
             const data = await res.json();
             setRegistrations(data);
@@ -208,7 +208,7 @@ export default function AdminPortal() {
             const url = activeFinancialYear
                 ? `/api/purchases?registrationId=${regId}&financialYear=${activeFinancialYear}`
                 : `/api/purchases?registrationId=${regId}`;
-            
+
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -505,6 +505,32 @@ export default function AdminPortal() {
 
     const dueRegistrations = filteredRegistrations.filter(reg => getFeeStatus(reg).isDue);
 
+    const getNextDueDate = (reg: Registration): string => {
+        if (!reg.feesDate) return "—";
+        
+        const today = new Date();
+        const currentMonthStr = today.toISOString().slice(0, 7);
+        
+        // If already paid for this month or future, calculate next due
+        if (reg.lastPaidMonth && reg.lastPaidMonth >= currentMonthStr) {
+            const [year, month] = reg.lastPaidMonth.split('-').map(Number);
+            const nextDue = new Date(year, month, 1); // First day of month after last paid
+            return nextDue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+        
+        // If not paid yet, show the upcoming due date
+        const feesDateObj = new Date(reg.feesDate);
+        const feesDay = feesDateObj.getDate();
+        const nextDue = new Date(today.getFullYear(), today.getMonth(), feesDay);
+        
+        // If the due date has passed this month, next month
+        if (today.getDate() > feesDay) {
+            nextDue.setMonth(today.getMonth() + 1);
+        }
+        
+        return nextDue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    };
+
     const handleToggleStatus = async (reg: Registration) => {
         const newStatus = !reg.isActive;
         const loadingToast = toast.loading(`${newStatus ? 'Activating' : 'Deactivating'} ${reg.studentName}...`);
@@ -744,13 +770,14 @@ export default function AdminPortal() {
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Area</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Status</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Fees</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Next Due</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/50">
                                 {filteredRegistrations.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-20 text-center">
+                                        <td colSpan={9} className="px-6 py-20 text-center">
                                             <div className="flex flex-col items-center justify-center opacity-30">
                                                 <Users className="h-12 w-12 mb-2" />
                                                 <p className="text-sm font-bold uppercase tracking-widest">No matching records found</p>
@@ -773,12 +800,12 @@ export default function AdminPortal() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                 <td className="px-6 py-4">
-                                                     <p className="text-sm font-black text-navy">{reg.studentName}</p>
-                                                     <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">
-                                                         FY: {reg.financialYearRegNo?.toString().padStart(4, '0') || reg.id.toString().padStart(4, '0')}
-                                                     </p>
-                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-sm font-black text-navy">{reg.studentName}</p>
+                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">
+                                                        ID: {reg.financialYearRegNo?.toString().padStart(4, '0') || reg.id.toString().padStart(4, '0')}
+                                                    </p>
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${reg.type === "student" ? "bg-navy/10 text-navy" : "bg-lime/20 text-lime-dark"}`}>
                                                         {reg.type}
@@ -807,14 +834,19 @@ export default function AdminPortal() {
                                                          <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground opacity-50">Paid</span>
                                                      )}
                                                  </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <button
-                                                        onClick={() => setSelected(reg)}
-                                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all active:scale-90"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </button>
-                                                </td>
+                                                 <td className="px-6 py-4">
+                                                     <p className="text-[9px] font-black uppercase tracking-tighter text-navy">
+                                                         {getNextDueDate(reg)}
+                                                     </p>
+                                                 </td>
+                                                 <td className="px-6 py-4 text-center">
+                                                     <button
+                                                         onClick={() => setSelected(reg)}
+                                                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all active:scale-90"
+                                                     >
+                                                         <Eye className="h-4 w-4" />
+                                                     </button>
+                                                 </td>
                                             </tr>
                                         );
                                     })
