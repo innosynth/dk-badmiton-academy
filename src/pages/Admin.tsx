@@ -68,6 +68,21 @@ interface Guest {
     updatedAt: string;
 }
 
+const FilterSelect = ({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) => (
+    <div className="space-y-1">
+        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{label}</label>
+        <select 
+            value={value} 
+            onChange={(e) => onChange(e.target.value)} 
+            className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-[10px] font-bold text-navy focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+        >
+            {options.map(opt => (
+                <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+            ))}
+        </select>
+    </div>
+);
+
 export default function AdminPortal() {
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [loading, setLoading] = useState(true);
@@ -102,6 +117,12 @@ export default function AdminPortal() {
     const [guestForm, setGuestForm] = useState({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" });
     const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
     const [isSavingGuest, setIsSavingGuest] = useState(false);
+    const [filters, setFilters] = useState({
+        type: "all",
+        squad: "all",
+        fees: "all",
+        month: "all"
+    });
 
     // Financial Year state
     const [activeFinancialYear, setActiveFinancialYear] = useState<string>("");
@@ -433,22 +454,20 @@ export default function AdminPortal() {
     };
 
     const handleMarkFeePaid = async (reg: Registration, months: number = 1) => {
-        const today = new Date();
-        const currentMonthStr = today.toISOString().slice(0, 7);
-
-        let year, month;
-        if (reg.lastPaidMonth && reg.lastPaidMonth >= currentMonthStr) {
-            // Start from month after last paid month
-            const lastParts = reg.lastPaidMonth.split('-').map(Number);
-            year = lastParts[0];
-            month = lastParts[1] - 1; // Convert ISO month (1-12) to JS month (0-11)
-        } else {
-            // Start from current month
-            year = today.getFullYear();
-            month = today.getMonth();
+        if (!reg.feesDate) {
+            toast.error("Please set a Fees Date for this profile first");
+            return;
         }
 
-        const targetDate = new Date(year, month + months - 1, 1);
+        const [y, m, d] = reg.feesDate.split('-').map(Number);
+        const feesDate = new Date(y, m - 1, d);
+        
+        const currentPaid = reg.paidMonthsCount || 0;
+        const totalMonthsMarked = currentPaid + months;
+
+        // Calculate the last paid month string (YYYY-MM)
+        const targetDate = new Date(feesDate);
+        targetDate.setMonth(feesDate.getMonth() + totalMonthsMarked - 1);
         const newPaidMonth = targetDate.toISOString().slice(0, 7);
 
         const loadingToast = toast.loading("Updating fee status...");
@@ -459,14 +478,14 @@ export default function AdminPortal() {
                 body: JSON.stringify({
                     id: reg.id,
                     lastPaidMonth: newPaidMonth,
-                    paidMonthsCount: (reg.paidMonthsCount || 0) + months
+                    paidMonthsCount: totalMonthsMarked
                 }),
             });
             if (!res.ok) throw new Error("Update failed");
             const updated = await res.json();
             setRegistrations(prev => prev.map(r => r.id === reg.id ? updated : r));
             if (selected?.id === reg.id) setSelected(updated);
-            toast.success(`Marked as paid for ${months} month(s) until ${newPaidMonth}`);
+            toast.success(`Marked as paid for ${months} month(s) until ${targetDate.toLocaleString('default', { month: 'short', year: 'numeric' })}`);
         } catch (e: any) {
             toast.error(e.message);
         } finally {
@@ -476,57 +495,86 @@ export default function AdminPortal() {
 
     const getFeeStatus = (reg: Registration) => {
         if (!reg.feesDate) return { isDue: false, label: "No Date Set" };
-        const feesDateObj = new Date(reg.feesDate);
+        
+        const [y, m, d] = reg.feesDate.split('-').map(Number);
+        const feesDate = new Date(y, m - 1, d);
         const today = new Date();
-        const currentMonthStr = today.toISOString().slice(0, 7);
+        
+        // Calculate months elapsed since feesDate
+        let monthsElapsed = (today.getFullYear() - feesDate.getFullYear()) * 12 + (today.getMonth() - feesDate.getMonth());
+        
+        // Adjust for cases where enrollment was in a future month (unlikely but possible)
+        if (monthsElapsed < 0) return { isDue: false, label: "Upcoming" };
 
-        // If already paid for this month OR future months
-        if (reg.lastPaidMonth && reg.lastPaidMonth >= currentMonthStr) return { isDue: false, label: "Paid" };
-
-        // Alert on the 5th of current month if date was set on 6th of previous? 
-        // User said: "if date is set as Mar 6 on April 5 an alert should be sent"
-        // This suggests alert is due 1 day before the anniversary in the next month.
-        // Let's generalize: Alert if Today >= Anniversary - 1 day, AND not paid for this cycle.
-
-        const anniversaryDay = feesDateObj.getDate();
-        const alertDay = anniversaryDay - 1 || 28; // fallback for day 1
-
-        if (today.getDate() >= alertDay) {
+        const anniversaryDay = feesDate.getDate();
+        const alertDay = anniversaryDay - 1 || 28;
+        
+        const paidMonths = reg.paidMonthsCount || 0;
+        
+        // If they have paid fewer months than have elapsed, they are behind
+        if (paidMonths < monthsElapsed) {
             return { isDue: true, label: "Fee Due" };
         }
+        
+        // If they have paid exactly the number of elapsed months, they owe for the current month cycle
+        if (paidMonths === monthsElapsed) {
+            if (today.getDate() >= alertDay) {
+                return { isDue: true, label: "Fee Due" };
+            }
+            return { isDue: false, label: "Upcoming" };
+        }
 
-        return { isDue: false, label: "Upcoming" };
+        return { isDue: false, label: "Paid" };
     };
 
     const filteredRegistrations = registrations.filter(reg => {
-        if (user?.role === 'coach') return reg.type === 'student';
+        if (user?.role === 'coach' && reg.type !== 'student') return false;
+        
+        if (filters.type !== 'all' && reg.type !== filters.type) return false;
+        if (filters.squad !== 'all' && reg.squadLevel !== filters.squad) return false;
+        
+        const status = getFeeStatus(reg);
+        if (filters.fees === 'due' && !status.isDue) return false;
+        if (filters.fees === 'paid' && (status.isDue || status.label === "No Date Set")) return false;
+        
+        if (filters.month !== 'all') {
+            const nextDueStr = getNextDueDate(reg);
+            if (!nextDueStr.toLowerCase().includes(filters.month.toLowerCase())) return false;
+        }
+        
         return true;
     });
+
+    const getDaysRemaining = (reg: Registration): number | null => {
+        if (!reg.feesDate) return null;
+        const [y, m, d] = reg.feesDate.split('-').map(Number);
+        const feesDate = new Date(y, m - 1, d);
+        const nextDue = new Date(feesDate);
+        nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
+        nextDue.setDate(nextDue.getDate() + 1);
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        nextDue.setHours(0, 0, 0, 0);
+        
+        const diffTime = nextDue.getTime() - today.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
 
     const dueRegistrations = filteredRegistrations.filter(reg => getFeeStatus(reg).isDue);
 
     const getNextDueDate = (reg: Registration): string => {
         if (!reg.feesDate) return "—";
         
-        const today = new Date();
-        const currentMonthStr = today.toISOString().slice(0, 7);
+        const [y, m, d] = reg.feesDate.split('-').map(Number);
+        const feesDate = new Date(y, m - 1, d);
         
-        // If already paid for this month or future, calculate next due
-        if (reg.lastPaidMonth && reg.lastPaidMonth >= currentMonthStr) {
-            const [year, month] = reg.lastPaidMonth.split('-').map(Number);
-            const nextDue = new Date(year, month, 1); // First day of month after last paid
-            return nextDue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        }
+        // Use paidMonthsCount to determine the exact next due date
+        const nextDue = new Date(feesDate);
+        nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
         
-        // If not paid yet, show the upcoming due date
-        const feesDateObj = new Date(reg.feesDate);
-        const feesDay = feesDateObj.getDate();
-        const nextDue = new Date(today.getFullYear(), today.getMonth(), feesDay);
-        
-        // If the due date has passed this month, next month
-        if (today.getDate() > feesDay) {
-            nextDue.setMonth(today.getMonth() + 1);
-        }
+        // Add 1 day to the anniversary to match user expectation (e.g. 13th -> 14th)
+        nextDue.setDate(nextDue.getDate() + 1);
         
         return nextDue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     };
@@ -755,6 +803,38 @@ export default function AdminPortal() {
                             </div>
                         </div>
                     )}
+
+                    <div className="lg:col-span-3 rounded-2xl bg-card border border-border p-6 shadow-sm">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Filters</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full sm:w-auto">
+                                <FilterSelect 
+                                    label="Type" 
+                                    value={filters.type} 
+                                    options={["all", "student", "member"]} 
+                                    onChange={(v) => setFilters(f => ({ ...f, type: v }))} 
+                                />
+                                <FilterSelect 
+                                    label="Squad/Level" 
+                                    value={filters.squad} 
+                                    options={["all", "Beginner", "Intermediate", "Advanced", "Elite"]} 
+                                    onChange={(v) => setFilters(f => ({ ...f, squad: v }))} 
+                                />
+                                <FilterSelect 
+                                    label="Fees" 
+                                    value={filters.fees} 
+                                    options={["all", "paid", "due"]} 
+                                    onChange={(v) => setFilters(f => ({ ...f, fees: v }))} 
+                                />
+                                <FilterSelect 
+                                    label="Next Due" 
+                                    value={filters.month} 
+                                    options={["all", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]} 
+                                    onChange={(v) => setFilters(f => ({ ...f, month: v }))} 
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Main Table View */}
@@ -767,10 +847,10 @@ export default function AdminPortal() {
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Name</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Type</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Squad/Level</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Area</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Fees Date</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Fees</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Next Due</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Status</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -787,6 +867,14 @@ export default function AdminPortal() {
                                 ) : (
                                     filteredRegistrations.map((reg) => {
                                         const status = getFeeStatus(reg);
+                                        const daysRemaining = getDaysRemaining(reg);
+                                        let dueColor = "text-navy";
+                                        if (daysRemaining !== null) {
+                                            if (daysRemaining < 3) dueColor = "text-destructive";
+                                            else if (daysRemaining < 15) dueColor = "text-orange-500";
+                                            else dueColor = "text-lime-dark";
+                                        }
+
                                         return (
                                             <tr key={reg.id} className="group hover:bg-muted/30 transition-colors">
                                                 <td className="px-6 py-4">
@@ -815,13 +903,7 @@ export default function AdminPortal() {
                                                     <p className="text-xs font-bold text-navy">{reg.squadLevel || "—"}</p>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <p className="text-xs font-medium text-muted-foreground">{reg.area || "General"}</p>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${reg.isActive ? "text-lime-dark" : "bg-destructive/10 text-destructive"}`}>
-                                                        <span className={`h-1.5 w-1.5 rounded-full ${reg.isActive ? "bg-lime-dark" : "bg-destructive"}`} />
-                                                        {reg.isActive ? "Active" : "Inactive"}
-                                                    </span>
+                                                    <p className="text-xs font-medium text-muted-foreground">{reg.feesDate || "—"}</p>
                                                 </td>
                                                  <td className="px-6 py-4">
                                                      {status.isDue ? (
@@ -835,10 +917,21 @@ export default function AdminPortal() {
                                                      )}
                                                  </td>
                                                  <td className="px-6 py-4">
-                                                     <p className="text-[9px] font-black uppercase tracking-tighter text-navy">
+                                                     <p className={`text-[9px] font-black uppercase tracking-tighter ${dueColor}`}>
                                                          {getNextDueDate(reg)}
                                                      </p>
+                                                     {daysRemaining !== null && (
+                                                         <p className={`text-[8px] font-bold uppercase tracking-tighter opacity-70 ${dueColor}`}>
+                                                             {daysRemaining < 0 ? `${Math.abs(daysRemaining)}d Overdue` : `${daysRemaining}d Left`}
+                                                         </p>
+                                                     )}
                                                  </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${reg.isActive ? "text-lime-dark" : "bg-destructive/10 text-destructive"}`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${reg.isActive ? "bg-lime-dark" : "bg-destructive"}`} />
+                                                        {reg.isActive ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
                                                  <td className="px-6 py-4 text-center">
                                                      <button
                                                          onClick={() => setSelected(reg)}
@@ -983,7 +1076,7 @@ export default function AdminPortal() {
                                             <tbody className="divide-y divide-border/50 text-[11px] font-bold">
                                                 <tr>
                                                     <td className="px-4 py-3 text-navy">
-                                                        {getFeeStatus(selected).isDue ? new Date().toLocaleString('default', { month: 'long' }) : (selected.lastPaidMonth ? new Date(selected.lastPaidMonth + "-01").toLocaleString('default', { month: 'long', year: 'numeric' }) : "None")}
+                                                        {getNextDueDate(selected)}
                                                     </td>
                                                     <td className="px-4 py-3 text-muted-foreground">
                                                         {selected.lastPaidMonth || "None"}
