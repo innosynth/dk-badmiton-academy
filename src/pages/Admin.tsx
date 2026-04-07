@@ -68,6 +68,83 @@ interface Guest {
     updatedAt: string;
 }
 
+const getFeeStatus = (reg: Registration) => {
+    if (!reg.feesDate) return { isDue: false, label: "No Date Set" };
+    
+    const [y, m, d] = reg.feesDate.split('-').map(Number);
+    const feesDate = new Date(y, m - 1, d);
+    const today = new Date();
+    
+    // Calculate months elapsed since feesDate
+    let monthsElapsed = (today.getFullYear() - feesDate.getFullYear()) * 12 + (today.getMonth() - feesDate.getMonth());
+    
+    // Adjust for cases where enrollment was in a future month (unlikely but possible)
+    if (monthsElapsed < 0) return { isDue: false, label: "Upcoming" };
+
+    const anniversaryDay = feesDate.getDate();
+    const alertDay = anniversaryDay - 1 || 28;
+    
+    const paidMonths = reg.paidMonthsCount || 0;
+    
+    // If they have paid fewer months than have elapsed, they are behind
+    if (paidMonths < monthsElapsed) {
+        return { isDue: true, label: "Fee Due" };
+    }
+    
+    // If they have paid exactly the number of elapsed months, they owe for the current month cycle
+    if (paidMonths === monthsElapsed) {
+        if (today.getDate() >= alertDay) {
+            return { isDue: true, label: "Fee Due" };
+        }
+        return { isDue: false, label: "Upcoming" };
+    }
+
+    return { isDue: false, label: "Paid" };
+};
+
+const getNextDueDate = (reg: Registration): string => {
+    if (!reg.feesDate) return "—";
+    
+    const [y, m, d] = reg.feesDate.split('-').map(Number);
+    const feesDate = new Date(y, m - 1, d);
+    
+    // Use paidMonthsCount to determine the exact next due date
+    const nextDue = new Date(feesDate);
+    nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
+    
+    // Add 1 day to the anniversary to match user expectation (e.g. 13th -> 14th)
+    nextDue.setDate(nextDue.getDate() + 1);
+    
+    return nextDue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
+const getDaysRemaining = (reg: Registration): number | null => {
+    if (!reg.feesDate) return null;
+    const [y, m, d] = reg.feesDate.split('-').map(Number);
+    const feesDate = new Date(y, m - 1, d);
+    const nextDue = new Date(feesDate);
+    nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
+    nextDue.setDate(nextDue.getDate() + 1);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    nextDue.setHours(0, 0, 0, 0);
+    
+    const diffTime = nextDue.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+const getNextDueDateObject = (reg: Registration): Date | null => {
+    if (!reg.feesDate) return null;
+    const [y, m, d] = reg.feesDate.split('-').map(Number);
+    const feesDate = new Date(y, m - 1, d);
+    const nextDue = new Date(feesDate);
+    nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
+    nextDue.setDate(nextDue.getDate() + 1);
+    nextDue.setHours(0, 0, 0, 0);
+    return nextDue;
+};
+
 const FilterSelect = ({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) => (
     <div className="space-y-1">
         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{label}</label>
@@ -80,6 +157,21 @@ const FilterSelect = ({ label, value, options, onChange }: { label: string, valu
                 <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
             ))}
         </select>
+    </div>
+);
+
+const FilterDate = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
+    <div className="space-y-1">
+        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{label}</label>
+        <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+            <input 
+                type="date"
+                value={value} 
+                onChange={(e) => onChange(e.target.value)} 
+                className="h-9 w-full rounded-xl border border-border bg-muted/30 pl-8 pr-2 text-[10px] font-bold text-navy focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+            />
+        </div>
     </div>
 );
 
@@ -121,7 +213,8 @@ export default function AdminPortal() {
         type: "all",
         squad: "all",
         fees: "all",
-        month: "all"
+        startDate: "",
+        endDate: ""
     });
 
     // Financial Year state
@@ -493,39 +586,7 @@ export default function AdminPortal() {
         }
     };
 
-    const getFeeStatus = (reg: Registration) => {
-        if (!reg.feesDate) return { isDue: false, label: "No Date Set" };
-        
-        const [y, m, d] = reg.feesDate.split('-').map(Number);
-        const feesDate = new Date(y, m - 1, d);
-        const today = new Date();
-        
-        // Calculate months elapsed since feesDate
-        let monthsElapsed = (today.getFullYear() - feesDate.getFullYear()) * 12 + (today.getMonth() - feesDate.getMonth());
-        
-        // Adjust for cases where enrollment was in a future month (unlikely but possible)
-        if (monthsElapsed < 0) return { isDue: false, label: "Upcoming" };
 
-        const anniversaryDay = feesDate.getDate();
-        const alertDay = anniversaryDay - 1 || 28;
-        
-        const paidMonths = reg.paidMonthsCount || 0;
-        
-        // If they have paid fewer months than have elapsed, they are behind
-        if (paidMonths < monthsElapsed) {
-            return { isDue: true, label: "Fee Due" };
-        }
-        
-        // If they have paid exactly the number of elapsed months, they owe for the current month cycle
-        if (paidMonths === monthsElapsed) {
-            if (today.getDate() >= alertDay) {
-                return { isDue: true, label: "Fee Due" };
-            }
-            return { isDue: false, label: "Upcoming" };
-        }
-
-        return { isDue: false, label: "Paid" };
-    };
 
     const filteredRegistrations = registrations.filter(reg => {
         if (user?.role === 'coach' && reg.type !== 'student') return false;
@@ -537,47 +598,28 @@ export default function AdminPortal() {
         if (filters.fees === 'due' && !status.isDue) return false;
         if (filters.fees === 'paid' && (status.isDue || status.label === "No Date Set")) return false;
         
-        if (filters.month !== 'all') {
-            const nextDueStr = getNextDueDate(reg);
-            if (!nextDueStr.toLowerCase().includes(filters.month.toLowerCase())) return false;
+        if (filters.startDate || filters.endDate) {
+            const nextDue = getNextDueDateObject(reg);
+            if (!nextDue) return false;
+            
+            if (filters.startDate) {
+                const start = new Date(filters.startDate);
+                start.setHours(0, 0, 0, 0);
+                if (nextDue < start) return false;
+            }
+            if (filters.endDate) {
+                const end = new Date(filters.endDate);
+                end.setHours(23, 59, 59, 999);
+                if (nextDue > end) return false;
+            }
         }
         
         return true;
     });
 
-    const getDaysRemaining = (reg: Registration): number | null => {
-        if (!reg.feesDate) return null;
-        const [y, m, d] = reg.feesDate.split('-').map(Number);
-        const feesDate = new Date(y, m - 1, d);
-        const nextDue = new Date(feesDate);
-        nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
-        nextDue.setDate(nextDue.getDate() + 1);
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        nextDue.setHours(0, 0, 0, 0);
-        
-        const diffTime = nextDue.getTime() - today.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
+    const dueRegistrations = registrations.filter(reg => getFeeStatus(reg).isDue);
 
-    const dueRegistrations = filteredRegistrations.filter(reg => getFeeStatus(reg).isDue);
 
-    const getNextDueDate = (reg: Registration): string => {
-        if (!reg.feesDate) return "—";
-        
-        const [y, m, d] = reg.feesDate.split('-').map(Number);
-        const feesDate = new Date(y, m - 1, d);
-        
-        // Use paidMonthsCount to determine the exact next due date
-        const nextDue = new Date(feesDate);
-        nextDue.setMonth(feesDate.getMonth() + (reg.paidMonthsCount || 0));
-        
-        // Add 1 day to the anniversary to match user expectation (e.g. 13th -> 14th)
-        nextDue.setDate(nextDue.getDate() + 1);
-        
-        return nextDue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    };
 
     const handleToggleStatus = async (reg: Registration) => {
         const newStatus = !reg.isActive;
@@ -797,7 +839,7 @@ export default function AdminPortal() {
                             <h3 className="text-xs font-black uppercase tracking-widest text-destructive mb-3">Fee Alerts Pending</h3>
                             <p className="text-sm font-bold text-destructive mb-3">{dueRegistrations.length} profiles have fees due for {new Date().toLocaleString('default', { month: 'long' })}.</p>
                             <div className="flex gap-2">
-                                <button onClick={() => setSelected(dueRegistrations[0])} className="text-[10px] bg-destructive text-white px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter shadow-lg shadow-destructive/20 active:scale-95 transition-all">
+                                <button onClick={() => setFilters(f => ({ ...f, fees: 'due' }))} className="text-[10px] bg-destructive text-white px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter shadow-lg shadow-destructive/20 active:scale-95 transition-all">
                                     Review All
                                 </button>
                             </div>
@@ -826,11 +868,17 @@ export default function AdminPortal() {
                                     options={["all", "paid", "due"]} 
                                     onChange={(v) => setFilters(f => ({ ...f, fees: v }))} 
                                 />
-                                <FilterSelect 
-                                    label="Next Due" 
-                                    value={filters.month} 
-                                    options={["all", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]} 
-                                    onChange={(v) => setFilters(f => ({ ...f, month: v }))} 
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 w-full sm:w-80">
+                                <FilterDate 
+                                    label="Due From"
+                                    value={filters.startDate}
+                                    onChange={(v) => setFilters(f => ({ ...f, startDate: v }))}
+                                />
+                                <FilterDate 
+                                    label="Due To"
+                                    value={filters.endDate}
+                                    onChange={(v) => setFilters(f => ({ ...f, endDate: v }))}
                                 />
                             </div>
                         </div>
