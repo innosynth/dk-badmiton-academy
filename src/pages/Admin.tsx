@@ -848,7 +848,15 @@ export default function AdminPortal() {
 
                     <div className="lg:col-span-3 rounded-2xl bg-card border border-border p-6 shadow-sm">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Filters</h3>
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Filters</h3>
+                                <button
+                                    onClick={() => setFilters({ type: "all", squad: "all", fees: "all", startDate: "", endDate: "" })}
+                                    className="text-[10px] font-black uppercase tracking-tighter bg-muted hover:bg-navy hover:text-white px-3 py-1.5 rounded-lg transition-all"
+                                >
+                                    Reset
+                                </button>
+                            </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full sm:w-auto">
                                 <FilterSelect 
                                     label="Type" 
