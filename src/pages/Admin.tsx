@@ -69,6 +69,7 @@ interface Guest {
 }
 
 const getFeeStatus = (reg: Registration) => {
+    if (!reg.isActive) return { isDue: false, label: "Inactive" };
     if (!reg.feesDate) return { isDue: false, label: "No Date Set" };
     
     const [y, m, d] = reg.feesDate.split('-').map(Number);
@@ -143,6 +144,34 @@ const getNextDueDateObject = (reg: Registration): Date | null => {
     nextDue.setDate(nextDue.getDate() + 1);
     nextDue.setHours(0, 0, 0, 0);
     return nextDue;
+};
+
+const calculateDetailedAge = (dob: string | null | undefined): string => {
+    if (!dob) return "";
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return "";
+    const today = new Date();
+    
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+
+    if (days < 0) {
+        months--;
+    }
+    
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    const yearStr = years > 0 ? `${years} Year${years > 1 ? 's' : ''}` : "";
+    const monthStr = months > 0 ? `${months} Month${months > 1 ? 's' : ''}` : "";
+    
+    if (yearStr && monthStr) return `(${yearStr} ${monthStr})`;
+    if (yearStr) return `(${yearStr})`;
+    if (monthStr) return `(${monthStr})`;
+    return "(< 1 Month)";
 };
 
 const FilterSelect = ({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) => (
@@ -774,7 +803,9 @@ export default function AdminPortal() {
                     <div className="flex items-center gap-4 bg-card px-4 py-2 rounded-xl border border-border shadow-sm">
                         <div className="text-center">
                             <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Total</p>
-                            <p className="text-xl font-black text-navy">{filteredRegistrations.length}</p>
+                            <p className="text-xl font-black text-navy">
+                                {filteredRegistrations.filter((r) => r.isActive).length}
+                            </p>
                         </div>
                         <div className="h-8 w-px bg-border/60" />
                         <div className="text-center">
@@ -973,10 +1004,10 @@ export default function AdminPortal() {
                                                      )}
                                                  </td>
                                                  <td className="px-6 py-4">
-                                                     <p className={`text-[9px] font-black uppercase tracking-tighter ${dueColor}`}>
-                                                         {getNextDueDate(reg)}
+                                                     <p className={`text-[9px] font-black uppercase tracking-tighter ${reg.isActive ? dueColor : "text-muted-foreground opacity-30"}`}>
+                                                         {reg.isActive ? getNextDueDate(reg) : "—"}
                                                      </p>
-                                                     {daysRemaining !== null && (
+                                                     {reg.isActive && daysRemaining !== null && (
                                                          <p className={`text-[8px] font-bold uppercase tracking-tighter opacity-70 ${dueColor}`}>
                                                              {daysRemaining < 0 ? `${Math.abs(daysRemaining)}d Overdue` : `${daysRemaining}d Left`}
                                                          </p>
@@ -1132,7 +1163,7 @@ export default function AdminPortal() {
                                             <tbody className="divide-y divide-border/50 text-[11px] font-bold">
                                                 <tr>
                                                     <td className="px-4 py-3 text-navy">
-                                                        {getNextDueDate(selected)}
+                                                        {selected.isActive ? getNextDueDate(selected) : "—"}
                                                     </td>
                                                     <td className="px-4 py-3 text-muted-foreground">
                                                         {selected.lastPaidMonth || "None"}
@@ -1668,12 +1699,19 @@ function DetailItem({ label, value, isEditing, field, type = "text", options, on
                         {options?.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 ) : (
-                    <input
-                        type={type}
-                        className="mt-1 h-8 w-full rounded-md border border-border bg-muted/50 px-2 text-xs font-bold text-navy focus:outline-none focus:ring-1 focus:ring-navy"
-                        value={value || ""}
-                        onChange={(e) => onChange(e.target.value)}
-                    />
+                    <div className="relative">
+                        <input
+                            type={type}
+                            className="mt-1 h-8 w-full rounded-md border border-border bg-muted/50 px-2 text-xs font-bold text-navy focus:outline-none focus:ring-1 focus:ring-navy"
+                            value={value || ""}
+                            onChange={(e) => onChange(e.target.value)}
+                        />
+                        {label === "DOB" && value && (
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase text-lime-dark tracking-tighter pointer-events-none">
+                                {calculateDetailedAge(value)}
+                            </span>
+                        )}
+                    </div>
                 )}
             </div>
         );
@@ -1684,6 +1722,11 @@ function DetailItem({ label, value, isEditing, field, type = "text", options, on
             <p className="text-[10px] text-muted-foreground">{label}</p>
             <p className="text-xs font-bold text-navy truncate">
                 {label === "Fees/Month" && value ? `₹${value}` : (value || "—")}
+                {label === "DOB" && value && (
+                    <span className="ml-1.5 text-[9px] font-black uppercase text-lime-dark tracking-tighter">
+                        {calculateDetailedAge(value)}
+                    </span>
+                )}
             </p>
         </div>
     );
