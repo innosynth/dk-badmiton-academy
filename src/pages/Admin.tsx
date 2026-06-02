@@ -692,6 +692,32 @@ export default function AdminPortal() {
         }
     };
 
+    const handleToggleType = async (reg: Registration) => {
+        const newType = reg.type === "student" ? "member" : "student";
+        if (!confirm(`Are you sure you want to change ${reg.studentName}'s registration type to ${newType}?`)) return;
+
+        const loadingToast = toast.loading(`Changing registration type to ${newType}...`);
+        try {
+            const res = await fetch("/api/registrations", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: reg.id, type: newType }),
+            });
+
+            if (!res.ok) throw new Error("Failed to update registration type");
+
+            const updatedReg = await res.json();
+            setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
+            if (selected?.id === reg.id) setSelected(updatedReg);
+
+            toast.success(`${reg.studentName} has been changed to ${newType}`);
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            toast.dismiss(loadingToast);
+        }
+    };
+
     const handleStartEdit = () => {
         if (!selected) return;
         setEditForm(selected);
@@ -1129,6 +1155,12 @@ export default function AdminPortal() {
                                                 : "bg-lime text-secondary-foreground hover:bg-lime/90"}`}
                                         >
                                             {selected.isActive ? <><UserMinus className="h-3 w-3" /> Deactivate</> : <><UserCheck className="h-3 w-3" /> Activate</>}
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleType(selected)}
+                                            className="w-full flex h-10 items-center justify-center gap-2 rounded-xl bg-muted text-[10px] font-black uppercase tracking-widest text-navy hover:bg-navy hover:text-white transition-all border border-border/50"
+                                        >
+                                            <Users className="h-3 w-3" /> Change to {selected.type === "student" ? "Member" : "Student"}
                                         </button>
                                     </>
                                 ) : (
