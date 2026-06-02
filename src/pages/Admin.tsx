@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash } from "lucide-react";
+import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash, Search } from "lucide-react";
 import { toast } from "sonner";
 import FinancialYearSettings from "../components/FinancialYearSettings";
 
@@ -242,9 +242,11 @@ export default function AdminPortal() {
         type: "all",
         squad: "all",
         fees: "all",
+        status: "all",
         startDate: "",
         endDate: ""
     });
+    const [searchQuery, setSearchQuery] = useState("");
 
     // Financial Year state
     const [activeFinancialYear, setActiveFinancialYear] = useState<string>("");
@@ -623,9 +625,24 @@ export default function AdminPortal() {
         if (filters.type !== 'all' && reg.type !== filters.type) return false;
         if (filters.squad !== 'all' && reg.squadLevel !== filters.squad) return false;
         
-        const status = getFeeStatus(reg);
-        if (filters.fees === 'due' && !status.isDue) return false;
-        if (filters.fees === 'paid' && (status.isDue || status.label === "No Date Set")) return false;
+        const feeStatus = getFeeStatus(reg);
+        if (filters.fees === 'due' && !feeStatus.isDue) return false;
+        if (filters.fees === 'paid' && (feeStatus.isDue || feeStatus.label === "No Date Set")) return false;
+
+        if (filters.status !== 'all') {
+            const isRegActive = reg.isActive;
+            if (filters.status === 'active' && !isRegActive) return false;
+            if (filters.status === 'inactive' && isRegActive) return false;
+        }
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            const nameMatch = reg.studentName?.toLowerCase().includes(query);
+            const idString = reg.financialYearRegNo?.toString().padStart(4, '0') || reg.id.toString().padStart(4, '0');
+            const idMatch = idString.includes(query);
+            const regNoMatch = reg.regNo?.toLowerCase().includes(query);
+            if (!nameMatch && !idMatch && !regNoMatch) return false;
+        }
         
         if (filters.startDate || filters.endDate) {
             const nextDue = getNextDueDateObject(reg);
@@ -877,17 +894,34 @@ export default function AdminPortal() {
                         </div>
                     )}
 
-                    <div className="lg:col-span-3 rounded-2xl bg-card border border-border p-6 shadow-sm">
+                    <div className="lg:col-span-3 rounded-2xl bg-card border border-border p-6 shadow-sm space-y-4">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-4">
-                                <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Filters</h3>
-                                <button
-                                    onClick={() => setFilters({ type: "all", squad: "all", fees: "all", startDate: "", endDate: "" })}
-                                    className="text-[10px] font-black uppercase tracking-tighter bg-muted hover:bg-navy hover:text-white px-3 py-1.5 rounded-lg transition-all"
-                                >
-                                    Reset
-                                </button>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
+                                <div className="flex items-center gap-4">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Filters</h3>
+                                    <button
+                                        onClick={() => {
+                                            setFilters({ type: "all", squad: "all", fees: "all", status: "all", startDate: "", endDate: "" });
+                                            setSearchQuery("");
+                                        }}
+                                        className="text-[10px] font-black uppercase tracking-tighter bg-muted hover:bg-navy hover:text-white px-3 py-1.5 rounded-lg transition-all"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                                <div className="relative flex-1 max-w-md w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                    <input 
+                                        type="text"
+                                        placeholder="Search by name, ID or registration number..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="h-9 w-full rounded-xl border border-border bg-muted/30 pl-9 pr-4 text-xs font-bold text-navy focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+                                    />
+                                </div>
                             </div>
+                        </div>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-border/50 pt-4">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full sm:w-auto">
                                 <FilterSelect 
                                     label="Type" 
@@ -906,6 +940,12 @@ export default function AdminPortal() {
                                     value={filters.fees} 
                                     options={["all", "paid", "due"]} 
                                     onChange={(v) => setFilters(f => ({ ...f, fees: v }))} 
+                                />
+                                <FilterSelect 
+                                    label="Status" 
+                                    value={filters.status} 
+                                    options={["all", "active", "inactive"]} 
+                                    onChange={(v) => setFilters(f => ({ ...f, status: v }))} 
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full sm:w-80">
@@ -1117,7 +1157,17 @@ export default function AdminPortal() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <DetailSection title="Personal Information">
                                     <DetailItem label="Full Name" value={isEditing ? editForm.studentName : selected.studentName} isEditing={isEditing} field="studentName" onChange={(val) => setEditForm(f => ({ ...f, studentName: val }))} />
-                                    <DetailItem label="DOB" value={isEditing ? editForm.dob : selected.dob} type="date" isEditing={isEditing} field="dob" onChange={(val) => setEditForm(f => ({ ...f, dob: val }))} />
+                                    <DetailItem 
+                                        label="DOB" 
+                                        value={isEditing ? editForm.dob : selected.dob} 
+                                        type="date" 
+                                        isEditing={isEditing} 
+                                        field="dob" 
+                                        onChange={(val) => {
+                                            const computedAge = calculateDetailedAge(val).replace(/^\(|\)$/g, "");
+                                            setEditForm(f => ({ ...f, dob: val, age: computedAge }));
+                                        }} 
+                                    />
                                     <DetailItem label="Age" value={isEditing ? editForm.age : selected.age} isEditing={isEditing} field="age" onChange={(val) => setEditForm(f => ({ ...f, age: val }))} />
                                     <DetailItem label="Sex" value={isEditing ? editForm.sex : selected.sex} isEditing={isEditing} field="sex" onChange={(val) => setEditForm(f => ({ ...f, sex: val }))} />
                                     <DetailItem label="Area" value={isEditing ? editForm.area : selected.area} isEditing={isEditing} field="area" onChange={(val) => setEditForm(f => ({ ...f, area: val }))} />

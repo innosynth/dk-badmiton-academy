@@ -81,6 +81,34 @@ const SelectField = ({ label, name, register, options, className = "" }: any) =>
   </div>
 );
 
+const calculateDetailedAge = (dob: string | null | undefined): string => {
+  if (!dob) return "";
+  const birthDate = new Date(dob);
+  if (isNaN(birthDate.getTime())) return "";
+  const today = new Date();
+  
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+
+  if (days < 0) {
+    months--;
+  }
+  
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  const yearStr = years > 0 ? `${years} Year${years > 1 ? 's' : ''}` : "";
+  const monthStr = months > 0 ? `${months} Month${months > 1 ? 's' : ''}` : "";
+  
+  if (yearStr && monthStr) return `${yearStr} ${monthStr}`;
+  if (yearStr) return `${yearStr}`;
+  if (monthStr) return `${monthStr}`;
+  return "< 1 Month";
+};
+
 export default function RegistrationForm() {
   const [regType, setRegType] = useState<"student" | "member" | null>(null);
   const [step, setStep] = useState(0);
@@ -97,6 +125,15 @@ export default function RegistrationForm() {
     resolver: zodResolver(schema),
     defaultValues: { type: "student" }
   });
+
+  const dobValue = watch("dob");
+
+  useEffect(() => {
+    if (dobValue) {
+      const calculatedAge = calculateDetailedAge(dobValue);
+      setValue("age", calculatedAge);
+    }
+  }, [dobValue, setValue]);
 
   useEffect(() => {
     setValue("enrollmentDate", today);
