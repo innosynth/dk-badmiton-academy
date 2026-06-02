@@ -83,7 +83,7 @@ const getFeeStatus = (reg: Registration) => {
     if (monthsElapsed < 0) return { isDue: false, label: "Upcoming" };
 
     const anniversaryDay = feesDate.getDate();
-    const alertDay = anniversaryDay - 1 || 28;
+    const alertDay = anniversaryDay - 1 || 1;
     
     const paidMonths = reg.paidMonthsCount || 0;
     
@@ -1720,14 +1720,14 @@ function DetailItem({ label, value, isEditing, field, type = "text", options, on
     return (
         <div>
             <p className="text-[10px] text-muted-foreground">{label}</p>
-            <p className="text-xs font-bold text-navy truncate">
+            <div className="text-xs font-bold text-navy">
                 {label === "Fees/Month" && value ? `₹${value}` : (value || "—")}
                 {label === "DOB" && value && (
-                    <span className="ml-1.5 text-[9px] font-black uppercase text-lime-dark tracking-tighter">
+                    <div className="mt-0.5 text-[9px] font-black uppercase text-lime-dark tracking-tighter">
                         {calculateDetailedAge(value)}
-                    </span>
+                    </div>
                 )}
-            </p>
+            </div>
         </div>
     );
 }
