@@ -7,6 +7,7 @@ export const registrations = pgTable("registrations", {
     dob: date("dob"),
     age: text("age"),
     sex: text("sex"),
+    nationality: text("nationality"),
     schoolName: text("schoolName"),
     siblingsName: text("siblingsName"),
     regNo: text("regNo"),
@@ -24,6 +25,7 @@ export const registrations = pgTable("registrations", {
     enrollmentDate: date("enrollmentDate"),
     feesPerMonth: text("feesPerMonth"),
     squadLevel: text("squadLevel"),
+    sessionsPerMonth: text("sessionsPerMonth"),
     // Declaration
     studentSignature: text("studentSignature"),
     declarationDate: date("declarationDate"),
@@ -38,15 +40,17 @@ export const registrations = pgTable("registrations", {
     remarks: text("remarks"),
     financialYear: text("financialYear"),
     financialYearRegNo: integer("financialYearRegNo"),
+    weeklyPlan: text("weeklyPlan"),
     createdAt: timestamp("createdAt").defaultNow(),
 });
 
 export const users = pgTable("users", {
     id: serial("id").primaryKey(),
-    phone: text("phone").notNull().unique(),
+    phone: text("phone").notNull().unique("users_phone_key"),
     password: text("password").notNull(),
     name: text("name").notNull(),
     role: text("role").notNull().default("coach"), // 'admin' or 'coach'
+    accessLevel: text("accessLevel").default("full"),
     createdAt: timestamp("createdAt").defaultNow(),
 });
 

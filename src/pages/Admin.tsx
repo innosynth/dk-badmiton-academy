@@ -37,6 +37,7 @@ interface Registration {
     remarks: string;
     financialYear: string;
     financialYearRegNo: number;
+    weeklyPlan: string | null;
     createdAt: string;
 }
 
@@ -243,9 +244,11 @@ export default function AdminPortal() {
         squad: "all",
         fees: "all",
         status: "all",
+        weeklyPlan: "all",
         startDate: "",
         endDate: ""
     });
+    const [showStatementModal, setShowStatementModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Financial Year state
@@ -624,6 +627,7 @@ export default function AdminPortal() {
         
         if (filters.type !== 'all' && reg.type !== filters.type) return false;
         if (filters.squad !== 'all' && reg.squadLevel !== filters.squad) return false;
+        if (filters.weeklyPlan !== 'all' && (reg.weeklyPlan || null) !== filters.weeklyPlan) return false;
         
         const feeStatus = getFeeStatus(reg);
         if (filters.fees === 'due' && !feeStatus.isDue) return false;
@@ -927,7 +931,7 @@ export default function AdminPortal() {
                                     <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Filters</h3>
                                     <button
                                         onClick={() => {
-                                            setFilters({ type: "all", squad: "all", fees: "all", status: "all", startDate: "", endDate: "" });
+                                            setFilters({ type: "all", squad: "all", fees: "all", status: "all", weeklyPlan: "all", startDate: "", endDate: "" });
                                             setSearchQuery("");
                                         }}
                                         className="text-[10px] font-black uppercase tracking-tighter bg-muted hover:bg-navy hover:text-white px-3 py-1.5 rounded-lg transition-all"
@@ -948,7 +952,7 @@ export default function AdminPortal() {
                             </div>
                         </div>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-border/50 pt-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full sm:w-auto">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 w-full sm:w-auto">
                                 <FilterSelect 
                                     label="Type" 
                                     value={filters.type} 
@@ -972,6 +976,12 @@ export default function AdminPortal() {
                                     value={filters.status} 
                                     options={["all", "active", "inactive"]} 
                                     onChange={(v) => setFilters(f => ({ ...f, status: v }))} 
+                                />
+                                <FilterSelect 
+                                    label="Weekly Plan" 
+                                    value={filters.weeklyPlan} 
+                                    options={["all", "1", "2", "3", "4", "5", "6"]} 
+                                    onChange={(v) => setFilters(f => ({ ...f, weeklyPlan: v }))} 
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full sm:w-80">
@@ -1148,6 +1158,14 @@ export default function AdminPortal() {
                                         >
                                             <Edit2 className="h-3 w-3" /> Edit Profile
                                         </button>
+                                        {selected.type === "student" && (
+                                            <button
+                                                onClick={() => setShowStatementModal(true)}
+                                                className="w-full flex h-10 items-center justify-center gap-2 rounded-xl bg-lime/10 border border-lime/30 text-[10px] font-black uppercase tracking-widest text-lime-dark hover:bg-lime/20 transition-all"
+                                            >
+                                                <FileText className="h-3 w-3" /> Monthly Statement
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => handleToggleStatus(selected)}
                                             className={`w-full flex h-10 items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selected.isActive
@@ -1229,6 +1247,18 @@ export default function AdminPortal() {
                                     <DetailItem label="Fees/Month" value={isEditing ? editForm.feesPerMonth : selected.feesPerMonth} isEditing={isEditing} field="feesPerMonth" onChange={(val) => setEditForm(f => ({ ...f, feesPerMonth: val }))} />
                                     <DetailItem label="Months Paid" value={isEditing ? (editForm.paidMonthsCount || 0).toString() : (selected.paidMonthsCount || 0).toString()} isEditing={isEditing} field="paidMonthsCount" onChange={(val) => setEditForm(f => ({ ...f, paidMonthsCount: parseInt(val) || 0 }))} />
                                     <DetailItem label="Enrollment Date" value={isEditing ? editForm.enrollmentDate : selected.enrollmentDate} type="date" isEditing={isEditing} field="enrollmentDate" onChange={(val) => setEditForm(f => ({ ...f, enrollmentDate: val }))} />
+                                    {selected.type === "student" && (
+                                        <DetailItem
+                                            label="Weekly Plan"
+                                            value={isEditing ? (editForm.weeklyPlan || "") : (selected.weeklyPlan || "")}
+                                            isEditing={isEditing}
+                                            field="weeklyPlan"
+                                            type="select"
+                                            options={["1", "2", "3", "4", "5", "6"]}
+                                            onChange={(val) => setEditForm(f => ({ ...f, weeklyPlan: val }))}
+                                            displayEmpty="NA"
+                                        />
+                                    )}
                                 </DetailSection>
 
                                 <DetailSection title="Fee Tracking">
@@ -1353,6 +1383,105 @@ export default function AdminPortal() {
                                     </DetailSection>
 
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Monthly Statement Modal */}
+            {showStatementModal && selected && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-navy/30 p-4 backdrop-blur-md print:bg-white print:p-0 print:items-start">
+                    <style>{`@media print { body > * { display: none; } #monthly-statement { display: block !important; } .no-print { display: none !important; } }`}</style>
+                    <div id="monthly-statement" className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden print:rounded-none print:shadow-none print:max-w-full">
+                        {/* Header */}
+                        <div className="bg-navy px-8 py-6 flex items-center justify-between print:py-4">
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-lime/80">DK Badminton Academy</p>
+                                <h2 className="text-xl font-black text-white mt-1">Monthly Fee Statement</h2>
+                                <p className="text-[10px] text-white/60 mt-0.5">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                            </div>
+                            <button
+                                onClick={() => setShowStatementModal(false)}
+                                className="no-print rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Student Info */}
+                        <div className="px-8 py-5 border-b border-border/50 flex items-center gap-5">
+                            {selected.photoUrl ? (
+                                <img src={selected.photoUrl} alt="" className="h-16 w-14 rounded-xl object-cover border-2 border-border shadow" />
+                            ) : (
+                                <div className="h-16 w-14 rounded-xl bg-navy/10 flex items-center justify-center">
+                                    <User className="h-6 w-6 text-navy/40" />
+                                </div>
+                            )}
+                            <div>
+                                <h3 className="text-lg font-black text-navy">{selected.studentName}</h3>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                    ID: {selected.financialYearRegNo?.toString().padStart(4, '0') || selected.id.toString().padStart(4, '0')}
+                                    {selected.regNo && ` · Reg: ${selected.regNo}`}
+                                </p>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <span className="rounded-full bg-navy/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-navy">Student</span>
+                                    <span className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-widest ${selected.isActive ? 'bg-lime/20 text-lime-dark' : 'bg-destructive/10 text-destructive'}`}>{selected.isActive ? 'Active' : 'Inactive'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="px-8 py-5 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
+                            {[
+                                { label: "School", value: selected.schoolName },
+                                { label: "Area", value: selected.area },
+                                { label: "Squad / Level", value: selected.squadLevel },
+                                { label: "Weekly Plan", value: selected.weeklyPlan || "NA", highlight: true },
+                                { label: "Enrollment Date", value: selected.enrollmentDate ? new Date(selected.enrollmentDate).toLocaleDateString('en-IN') : null },
+                                { label: "Fees / Month", value: selected.feesPerMonth ? `₹${selected.feesPerMonth}` : null },
+                                { label: "Fees Date", value: selected.feesDate ? new Date(selected.feesDate).toLocaleDateString('en-IN') : null },
+                                { label: "Months Paid", value: `${selected.paidMonthsCount || 0}` },
+                                { label: "Last Paid Month", value: selected.lastPaidMonth || "—" },
+                                { label: "Next Due Date", value: selected.isActive ? getNextDueDate(selected) : "—" },
+                                { label: "Father's Contact", value: selected.fatherContact },
+                                { label: "Mother's Contact", value: selected.motherContact },
+                            ].map(({ label, value, highlight }) => (
+                                <div key={label}>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-0.5">{label}</p>
+                                    <p className={`text-xs font-black ${highlight ? 'text-lime-dark' : 'text-navy'}`}>{value || "—"}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Fee Status Banner */}
+                        <div className={`mx-8 mb-5 rounded-xl px-4 py-3 flex items-center justify-between ${getFeeStatus(selected).isDue ? 'bg-destructive/10 border border-destructive/20' : 'bg-lime/10 border border-lime/20'}`}>
+                            <p className={`text-[10px] font-black uppercase tracking-widest ${getFeeStatus(selected).isDue ? 'text-destructive' : 'text-lime-dark'}`}>
+                                Fee Status: {getFeeStatus(selected).label}
+                            </p>
+                            {selected.feesPerMonth && (
+                                <p className={`text-sm font-black ${getFeeStatus(selected).isDue ? 'text-destructive' : 'text-lime-dark'}`}>
+                                    ₹{selected.feesPerMonth} / month
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-8 pb-6 flex items-center justify-between border-t border-border/30 pt-4">
+                            <p className="text-[9px] text-muted-foreground">Generated on {new Date().toLocaleString('en-IN')}</p>
+                            <div className="no-print flex gap-2">
+                                <button
+                                    onClick={() => window.print()}
+                                    className="flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-navy-dark transition-all shadow-lg shadow-navy/20"
+                                >
+                                    <Download className="h-3 w-3" /> Print / Save PDF
+                                </button>
+                                <button
+                                    onClick={() => setShowStatementModal(false)}
+                                    className="rounded-xl bg-muted px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-all"
+                                >
+                                    Close
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1758,7 +1887,7 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
     );
 }
 
-function DetailItem({ label, value, isEditing, field, type = "text", options, onChange }: {
+function DetailItem({ label, value, isEditing, field, type = "text", options, onChange, displayEmpty }: {
     label: string;
     value: string | null | undefined;
     isEditing?: boolean;
@@ -1766,6 +1895,7 @@ function DetailItem({ label, value, isEditing, field, type = "text", options, on
     type?: string;
     options?: string[];
     onChange?: (val: string) => void;
+    displayEmpty?: string;
 }) {
     if (isEditing && field && onChange) {
         return (
@@ -1803,7 +1933,7 @@ function DetailItem({ label, value, isEditing, field, type = "text", options, on
         <div>
             <p className="text-[10px] text-muted-foreground">{label}</p>
             <div className="text-xs font-bold text-navy">
-                {label === "Fees/Month" && value ? `₹${value}` : (value || "—")}
+                {label === "Fees/Month" && value ? `₹${value}` : (value || displayEmpty || "—")}
                 {label === "DOB" && value && (
                     <div className="mt-0.5 text-[9px] font-black uppercase text-lime-dark tracking-tighter">
                         {calculateDetailedAge(value)}

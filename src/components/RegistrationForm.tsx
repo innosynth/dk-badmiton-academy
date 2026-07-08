@@ -31,6 +31,7 @@ const schema = z.object({
   enrollmentDate: z.string().optional(),
   feesPerMonth: z.string().optional(),
   squadLevel: z.string().optional(),
+  weeklyPlan: z.string().optional(),
   // Declaration
   studentSignature: z.string().min(1, "Signature is required"),
   declarationDate: z.string().optional(),
@@ -392,6 +393,9 @@ export default function RegistrationForm() {
                 <FormField label="Fees Date" name="feesDate" register={register} type="date" />
                 <FormField label="Months Paid" name="paidMonthsCount" register={register} placeholder="e.g. 1" />
                 <SelectField label="Squad / Level" name="squadLevel" register={register} options={["Beginner", "Intermediate", "Advanced", "Elite"]} />
+                {regType === "student" && (
+                  <SelectField label="Weekly Plan" name="weeklyPlan" register={register} options={["1", "2", "3", "4", "5", "6"]} />
+                )}
               </div>
             </div>
           </div>
