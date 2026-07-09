@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash, Search } from "lucide-react";
+import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash, Search, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
 import FinancialYearSettings from "../components/FinancialYearSettings";
+import * as XLSX from "xlsx";
 
 interface Registration {
     id: number;
@@ -249,10 +250,172 @@ export default function AdminPortal() {
         endDate: ""
     });
     const [showStatementModal, setShowStatementModal] = useState(false);
+
+    // Reports state
+    const [showReportsModal, setShowReportsModal] = useState(false);
+    const [reportPeriod, setReportPeriod] = useState("current_month");
+    const [reportCustomStart, setReportCustomStart] = useState("");
+    const [reportCustomEnd, setReportCustomEnd] = useState("");
+    const [isGeneratingReport, setIsGeneratingReport] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Financial Year state
     const [activeFinancialYear, setActiveFinancialYear] = useState<string>("");
+
+    const generateReport = async () => {
+        setIsGeneratingReport(true);
+        try {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = now.getMonth();
+
+            let start: Date, end: Date, periodLabel: string;
+            if (reportPeriod === "current_month") {
+                start = new Date(y, m, 1);
+                end = now;
+                periodLabel = `Current Month (${start.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`;
+            } else if (reportPeriod === "last_month") {
+                start = new Date(y, m - 1, 1);
+                end = new Date(y, m, 0);
+                periodLabel = `Last Month (${start.toLocaleDateString("en-IN", { month: "long", year: "numeric" })})`;
+            } else if (reportPeriod === "last_quarter") {
+                const prevQ = Math.floor(m / 3) - 1;
+                const qStart = prevQ < 0 ? new Date(y - 1, 9, 1) : new Date(y, prevQ * 3, 1);
+                const qEnd = prevQ < 0 ? new Date(y - 1, 12, 0) : new Date(y, prevQ * 3 + 3, 0);
+                start = qStart; end = qEnd;
+                periodLabel = `Last Quarter (${start.toLocaleDateString("en-IN", { month: "short", year: "numeric" })} - ${end.toLocaleDateString("en-IN", { month: "short", year: "numeric" })})`;
+            } else if (reportPeriod === "last_6_months") {
+                start = new Date(y, m - 6, 1);
+                end = new Date(y, m, 0);
+                periodLabel = `Last 6 Months (${start.toLocaleDateString("en-IN", { month: "short", year: "numeric" })} - ${end.toLocaleDateString("en-IN", { month: "short", year: "numeric" })})`;
+            } else {
+                if (!reportCustomStart || !reportCustomEnd) {
+                    toast.error("Please select a start and end date.");
+                    setIsGeneratingReport(false);
+                    return;
+                }
+                start = new Date(reportCustomStart);
+                end = new Date(reportCustomEnd);
+                end.setHours(23, 59, 59);
+                periodLabel = `Custom (${start.toLocaleDateString("en-IN")} - ${end.toLocaleDateString("en-IN")})`;
+            }
+
+            const fmtDate = (d: Date) =>
+                `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+            const fmtMonth = (d: Date) =>
+                d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+            const fmtRegNo = (reg: Registration) =>
+                reg.financialYearRegNo?.toString().padStart(4, "0") || reg.id.toString().padStart(4, "0");
+
+            // Helper: get all payment dates for a registration within the period
+            const getPaymentRows = (reg: Registration) => {
+                if (!reg.feesDate || !reg.paidMonthsCount || !reg.feesPerMonth) return [];
+                const rows: { date: Date; regNo: string; name: string; squad: string; cycleMonth: string; amount: number }[] = [];
+                const baseDate = new Date(reg.feesDate);
+                const fee = parseFloat(reg.feesPerMonth) || 0;
+                for (let i = 0; i < reg.paidMonthsCount; i++) {
+                    const payDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, baseDate.getDate());
+                    if (payDate >= start && payDate <= end) {
+                        rows.push({ date: payDate, regNo: fmtRegNo(reg), name: reg.studentName, squad: reg.squadLevel || "—", cycleMonth: fmtMonth(payDate), amount: fee });
+                    }
+                }
+                return rows;
+            };
+
+            const studentRows = registrations.filter(r => r.type === "student").flatMap(getPaymentRows);
+            const memberRows  = registrations.filter(r => r.type === "member").flatMap(getPaymentRows);
+
+            // Fetch guests directly for accurate list
+            let guestRows: { date: Date; name: string; court: string; amount: number }[] = [];
+            try {
+                const gRes = await fetch("/api/guests");
+                if (gRes.ok) {
+                    const allGuests: Guest[] = await gRes.json();
+                    guestRows = allGuests
+                        .filter(g => {
+                            if (!g.visitTime) return false;
+                            const vt = new Date(g.visitTime);
+                            return vt >= start && vt <= end;
+                        })
+                        .map(g => ({
+                            date: new Date(g.visitTime!),
+                            name: g.name,
+                            court: g.courtNumber || "—",
+                            amount: parseFloat(g.paymentDetails || "0") || 0,
+                        }));
+                }
+            } catch (_) { /* skip */ }
+
+            const studentTotal = studentRows.reduce((s, r) => s + r.amount, 0);
+            const memberTotal  = memberRows.reduce((s, r) => s + r.amount, 0);
+            const guestTotal   = guestRows.reduce((s, r) => s + r.amount, 0);
+            const grandTotal   = studentTotal + memberTotal + guestTotal;
+
+            // ── Build workbook ───────────────────────────────────────────────
+            const wb = XLSX.utils.book_new();
+            const rows: (string | number | null)[][] = [];
+
+            // Title block
+            rows.push(["DK BADMINTON ACADEMY", null, null, null, null, null]);
+            rows.push(["STATEMENT OF INCOME", null, null, null, null, null]);
+            rows.push([`Period: ${periodLabel}`, null, null, null, null, null]);
+            rows.push([null, null, null, null, null, null]);
+
+            // Consolidated summary
+            rows.push(["CONSOLIDATED FINANCIAL SUMMARY", null, null, null, null, null]);
+            rows.push(["Income Category", null, null, null, null, "Total Amount"]);
+            rows.push(["1. Student Registration Fees", null, null, null, null, studentTotal]);
+            rows.push(["2. Member Registration Fees", null, null, null, null, memberTotal]);
+            rows.push(["3. Guest Payments (Court Bookings)", null, null, null, null, guestTotal]);
+            rows.push(["CONSOLIDATED TOTAL INCOME", null, null, null, null, grandTotal]);
+            rows.push([null, null, null, null, null, null]);
+            rows.push([null, null, null, null, null, null]);
+
+            // Student detail
+            rows.push(["1. STUDENT FEE PAYMENTS DETAIL", null, null, null, null, null]);
+            rows.push(["Date", "Reg No", "Student Name", "Squad/Level", "Fee Cycle Month", "Amount"]);
+            studentRows.forEach(r => rows.push([fmtDate(r.date), r.regNo, r.name, r.squad, r.cycleMonth, r.amount]));
+            rows.push(["Total Student Income", null, null, null, null, studentTotal]);
+            rows.push([null, null, null, null, null, null]);
+            rows.push([null, null, null, null, null, null]);
+
+            // Member detail
+            rows.push(["2. MEMBER FEE PAYMENTS DETAIL", null, null, null, null, null]);
+            rows.push(["Date", "Reg No", "Member Name", "Squad/Level", "Fee Cycle Month", "Amount"]);
+            memberRows.forEach(r => rows.push([fmtDate(r.date), r.regNo, r.name, r.squad, r.cycleMonth, r.amount]));
+            rows.push(["Total Member Income", null, null, null, null, memberTotal]);
+            rows.push([null, null, null, null, null, null]);
+            rows.push([null, null, null, null, null, null]);
+
+            // Guest detail
+            rows.push(["3. GUEST BOOKINGS (COURT PAYMENTS) DETAIL", null, null, null, null, null]);
+            rows.push(["Date", "Guest Name", "Court No.", null, null, "Amount"]);
+            guestRows.forEach(r => rows.push([fmtDate(r.date), r.name, r.court, null, null, r.amount]));
+            rows.push(["Total Guest Income", null, null, null, null, guestTotal]);
+            rows.push([null, null, null, null, null, null]);
+            rows.push(["GRAND TOTAL", null, null, null, null, grandTotal]);
+
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+
+            // Column widths
+            ws["!cols"] = [{ wch: 38 }, { wch: 10 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Income Statement");
+
+            // Generate a filename matching the period
+            const safeLabel = periodLabel.replace(/[^a-zA-Z0-9 ()\-]/g, "").replace(/\s+/g, "_");
+            const fileName = `DK_Academy_Income_Statement_${safeLabel}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+
+            toast.success("Report downloaded successfully!");
+            setShowReportsModal(false);
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to generate report. Please try again.");
+        } finally {
+            setIsGeneratingReport(false);
+        }
+    };
 
     useEffect(() => {
         const savedUser = localStorage.getItem("adminUser");
@@ -904,6 +1067,9 @@ export default function AdminPortal() {
                                     <button onClick={() => setShowManageGuestsModal(true)} className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-bold text-navy hover:bg-navy hover:text-white transition-all">
                                         <User className="h-4 w-4" /> Manage Guests
                                     </button>
+                                    <button onClick={() => setShowReportsModal(true)} className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-xs font-bold text-navy hover:bg-navy hover:text-white transition-all">
+                                        <BarChart2 className="h-4 w-4" /> Reports
+                                    </button>
                                 </>
                             )}
                         </div>
@@ -1010,6 +1176,7 @@ export default function AdminPortal() {
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Name</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Type</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Squad/Level</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Weekly Plan</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Fees Date</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Fees</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Next Due</th>
@@ -1064,6 +1231,11 @@ export default function AdminPortal() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <p className="text-xs font-bold text-navy">{reg.squadLevel || "—"}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-xs font-bold text-navy">
+                                                        {reg.type === "student" ? (reg.weeklyPlan || "NA") : "—"}
+                                                    </p>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <p className="text-xs font-medium text-muted-foreground">{reg.feesDate || "—"}</p>
@@ -1483,6 +1655,95 @@ export default function AdminPortal() {
                                     Close
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Academy Reports Modal */}
+            {showReportsModal && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-[2rem] border border-border bg-card shadow-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="bg-navy px-8 py-6 flex items-center justify-between">
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-lime/70">Admin Portal</p>
+                                <h2 className="text-lg font-black uppercase tracking-widest text-white mt-0.5">Academy Reports</h2>
+                                <p className="text-[10px] text-white/50 mt-0.5">Generate Financial Statement of Income</p>
+                            </div>
+                            <button onClick={() => setShowReportsModal(false)} className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-8 py-7 space-y-6">
+                            {/* Period selector */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Statement Period</label>
+                                <select
+                                    value={reportPeriod}
+                                    onChange={e => setReportPeriod(e.target.value)}
+                                    className="h-11 w-full rounded-xl border border-border bg-muted/30 px-4 text-sm font-bold text-navy focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5 cursor-pointer"
+                                >
+                                    <option value="current_month">Current Month until Today</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="last_quarter">Last Quarter</option>
+                                    <option value="last_6_months">Last 6 Months</option>
+                                    <option value="custom">Custom Selection</option>
+                                </select>
+                            </div>
+
+                            {/* Custom date range */}
+                            {reportPeriod === "custom" && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">From</label>
+                                        <input
+                                            type="date"
+                                            value={reportCustomStart}
+                                            onChange={e => setReportCustomStart(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-xs font-bold text-navy focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">To</label>
+                                        <input
+                                            type="date"
+                                            value={reportCustomEnd}
+                                            onChange={e => setReportCustomEnd(e.target.value)}
+                                            className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-xs font-bold text-navy focus:border-navy focus:outline-none focus:ring-4 focus:ring-navy/5"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Info banner */}
+                            <div className="rounded-xl bg-navy/5 border border-navy/10 px-4 py-3">
+                                <p className="text-[10px] font-bold text-navy/70 leading-relaxed">
+                                    The report includes all student fees, member fees, and guest court bookings recorded within the selected period. The file will be saved as an Excel (.xlsx) spreadsheet.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-8 pb-7 flex gap-3">
+                            <button
+                                onClick={generateReport}
+                                disabled={isGeneratingReport}
+                                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-navy py-3 text-[10px] font-black uppercase tracking-widest text-white hover:bg-navy-dark transition-all shadow-lg shadow-navy/20 disabled:opacity-50"
+                            >
+                                {isGeneratingReport
+                                    ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                                    : <><Download className="h-3.5 w-3.5" /> Download Excel</>
+                                }
+                            </button>
+                            <button
+                                onClick={() => setShowReportsModal(false)}
+                                className="flex-1 rounded-xl bg-muted py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-all"
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
