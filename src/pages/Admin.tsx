@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash, Search, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
 import FinancialYearSettings from "../components/FinancialYearSettings";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface Registration {
     id: number;
@@ -351,61 +351,229 @@ export default function AdminPortal() {
             const guestTotal   = guestRows.reduce((s, r) => s + r.amount, 0);
             const grandTotal   = studentTotal + memberTotal + guestTotal;
 
-            // ── Build workbook ───────────────────────────────────────────────
-            const wb = XLSX.utils.book_new();
-            const rows: (string | number | null)[][] = [];
+            // ── Build styled workbook (ExcelJS) ──────────────────────────────
+            const wb = new ExcelJS.Workbook();
+            wb.creator = "DK Badminton Academy";
+            const ws = wb.addWorksheet("Income Statement", {
+                views: [{ showGridLines: false }],
+            });
+            ws.columns = [
+                { width: 15 }, { width: 15 }, { width: 30 },
+                { width: 20 }, { width: 20 }, { width: 18 },
+            ];
 
-            // Title block
-            rows.push(["DK BADMINTON ACADEMY", null, null, null, null, null]);
-            rows.push(["STATEMENT OF INCOME", null, null, null, null, null]);
-            rows.push([`Period: ${periodLabel}`, null, null, null, null, null]);
-            rows.push([null, null, null, null, null, null]);
+            // Theme tokens ----------------------------------------------------
+            const CURRENCY = "₹#,##0.00";
+            const NAVY = "FF1E3A8A";
+            const solid = (argb: string): ExcelJS.Fill =>
+                ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+            const thinGray: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FFD1D5DB" } };
+            const thinNavy: Partial<ExcelJS.Border> = { style: "thin", color: { argb: NAVY } };
+            const mediumNavy: Partial<ExcelJS.Border> = { style: "medium", color: { argb: NAVY } };
+            const doubleNavy: Partial<ExcelJS.Border> = { style: "double", color: { argb: NAVY } };
+            const FONT = {
+                title:    { name: "Segoe UI", size: 16, bold: true, color: { argb: NAVY } },
+                subtitle: { name: "Segoe UI", size: 11, bold: true, color: { argb: "FF6B7280" } },
+                period:   { name: "Segoe UI", size: 10, italic: true, color: { argb: "FF4B5563" } },
+                band:     { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFFFFFFF" } },
+                sumHead:  { name: "Segoe UI", size: 10, bold: true, color: { argb: NAVY } },
+                row:      { name: "Segoe UI", size: 10 },
+                grand:    { name: "Segoe UI", size: 11, bold: true, color: { argb: NAVY } },
+                section:  { name: "Segoe UI", size: 11, bold: true, color: { argb: NAVY } },
+                colHead:  { name: "Segoe UI", size: 9,  bold: true, color: { argb: "FF4B5563" } },
+                total:    { name: "Segoe UI", size: 10, bold: true },
+                empty:    { name: "Segoe UI", size: 10, italic: true, color: { argb: "FF9CA3AF" } },
+            } as const;
 
-            // Consolidated summary
-            rows.push(["CONSOLIDATED FINANCIAL SUMMARY", null, null, null, null, null]);
-            rows.push(["Income Category", null, null, null, null, "Total Amount"]);
-            rows.push(["1. Student Registration Fees", null, null, null, null, studentTotal]);
-            rows.push(["2. Member Registration Fees", null, null, null, null, memberTotal]);
-            rows.push(["3. Guest Payments (Court Bookings)", null, null, null, null, guestTotal]);
-            rows.push(["CONSOLIDATED TOTAL INCOME", null, null, null, null, grandTotal]);
-            rows.push([null, null, null, null, null, null]);
-            rows.push([null, null, null, null, null, null]);
+            // Row helpers -----------------------------------------------------
+            let ri = 0;
+            const newRow = (height?: number) => {
+                ri++;
+                const row = ws.getRow(ri);
+                if (height) row.height = height;
+                return row;
+            };
+            type CellStyle = {
+                font?: Partial<ExcelJS.Font>;
+                fill?: ExcelJS.Fill;
+                border?: Partial<ExcelJS.Borders>;
+                numFmt?: string;
+                align?: Partial<ExcelJS.Alignment>;
+            };
+            const style = (cell: ExcelJS.Cell, s: CellStyle) => {
+                if (s.font) cell.font = s.font;
+                if (s.fill) cell.fill = s.fill;
+                if (s.border) cell.border = s.border;
+                if (s.numFmt) cell.numFmt = s.numFmt;
+                if (s.align) cell.alignment = s.align;
+            };
+            const styleRange = (row: ExcelJS.Row, c1: number, c2: number, s: CellStyle) => {
+                for (let c = c1; c <= c2; c++) style(row.getCell(c), s);
+            };
+            const midLeft: Partial<ExcelJS.Alignment> = { horizontal: "left", vertical: "middle" };
+            const midRight: Partial<ExcelJS.Alignment> = { horizontal: "right", vertical: "middle" };
+            const midCenter: Partial<ExcelJS.Alignment> = { horizontal: "center", vertical: "middle" };
 
-            // Student detail
-            rows.push(["1. STUDENT FEE PAYMENTS DETAIL", null, null, null, null, null]);
-            rows.push(["Date", "Reg No", "Student Name", "Squad/Level", "Fee Cycle Month", "Amount"]);
-            studentRows.forEach(r => rows.push([fmtDate(r.date), r.regNo, r.name, r.squad, r.cycleMonth, r.amount]));
-            rows.push(["Total Student Income", null, null, null, null, studentTotal]);
-            rows.push([null, null, null, null, null, null]);
-            rows.push([null, null, null, null, null, null]);
+            // Title block -----------------------------------------------------
+            let row = newRow(30);
+            ws.mergeCells(`A${ri}:F${ri}`);
+            row.getCell(1).value = "DK BADMINTON ACADEMY";
+            styleRange(row, 1, 6, { font: FONT.title, align: midCenter });
 
-            // Member detail
-            rows.push(["2. MEMBER FEE PAYMENTS DETAIL", null, null, null, null, null]);
-            rows.push(["Date", "Reg No", "Member Name", "Squad/Level", "Fee Cycle Month", "Amount"]);
-            memberRows.forEach(r => rows.push([fmtDate(r.date), r.regNo, r.name, r.squad, r.cycleMonth, r.amount]));
-            rows.push(["Total Member Income", null, null, null, null, memberTotal]);
-            rows.push([null, null, null, null, null, null]);
-            rows.push([null, null, null, null, null, null]);
+            row = newRow(20);
+            ws.mergeCells(`A${ri}:F${ri}`);
+            row.getCell(1).value = "STATEMENT OF INCOME";
+            styleRange(row, 1, 6, { font: FONT.subtitle, align: midCenter });
 
-            // Guest detail
-            rows.push(["3. GUEST BOOKINGS (COURT PAYMENTS) DETAIL", null, null, null, null, null]);
-            rows.push(["Date", "Guest Name", "Court No.", null, null, "Amount"]);
-            guestRows.forEach(r => rows.push([fmtDate(r.date), r.name, r.court, null, null, r.amount]));
-            rows.push(["Total Guest Income", null, null, null, null, guestTotal]);
-            rows.push([null, null, null, null, null, null]);
-            rows.push(["GRAND TOTAL", null, null, null, null, grandTotal]);
+            row = newRow(20);
+            ws.mergeCells(`A${ri}:F${ri}`);
+            row.getCell(1).value = `Period: ${periodLabel}`;
+            styleRange(row, 1, 6, { font: FONT.period, align: midCenter });
 
-            const ws = XLSX.utils.aoa_to_sheet(rows);
+            newRow(); // spacer
 
-            // Column widths
-            ws["!cols"] = [{ wch: 38 }, { wch: 10 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
+            // Consolidated summary --------------------------------------------
+            row = newRow(24);
+            ws.mergeCells(`A${ri}:F${ri}`);
+            row.getCell(1).value = "CONSOLIDATED FINANCIAL SUMMARY";
+            styleRange(row, 1, 6, { font: FONT.band, fill: solid(NAVY), align: midCenter });
 
-            XLSX.utils.book_append_sheet(wb, ws, "Income Statement");
+            row = newRow(20);
+            ws.mergeCells(`A${ri}:E${ri}`);
+            row.getCell(1).value = "Income Category";
+            styleRange(row, 1, 5, { font: FONT.sumHead, align: midLeft });
+            style(row.getCell(6), { font: FONT.sumHead, align: midRight });
+            row.getCell(6).value = "Total Amount";
+
+            const summaryRow = (label: string, amount: number) => {
+                const r = newRow(20);
+                ws.mergeCells(`A${ri}:E${ri}`);
+                r.getCell(1).value = label;
+                styleRange(r, 1, 5, { font: FONT.row, border: { bottom: thinGray }, align: midLeft });
+                const a = r.getCell(6);
+                a.value = amount;
+                style(a, { font: FONT.row, numFmt: CURRENCY, border: { bottom: thinGray }, align: midRight });
+            };
+            summaryRow("1. Student Registration Fees", studentTotal);
+            summaryRow("2. Member Registration Fees", memberTotal);
+            summaryRow("3. Guest Payments (Court Bookings)", guestTotal);
+
+            row = newRow(20);
+            ws.mergeCells(`A${ri}:E${ri}`);
+            row.getCell(1).value = "CONSOLIDATED TOTAL INCOME";
+            const consBorder: Partial<ExcelJS.Borders> = { top: thinGray, bottom: doubleNavy };
+            styleRange(row, 1, 5, { font: FONT.grand, fill: solid("FFF7FEE7"), border: consBorder, align: midLeft });
+            const consAmt = row.getCell(6);
+            consAmt.value = grandTotal;
+            style(consAmt, { font: FONT.grand, fill: solid("FFF7FEE7"), numFmt: CURRENCY, border: consBorder, align: midRight });
+
+            newRow(); newRow(); // spacers
+
+            // Detail section builder ------------------------------------------
+            const detailSection = (
+                title: string,
+                headers: string[],
+                dataRows: (string | number)[][],
+                totalLabel: string,
+                totalValue: number,
+                emptyMsg: string,
+            ) => {
+                // Section band
+                let r = newRow(24);
+                ws.mergeCells(`A${ri}:F${ri}`);
+                r.getCell(1).value = title;
+                styleRange(r, 1, 6, { font: FONT.section, fill: solid("FFEFF6FF"), border: { bottom: mediumNavy }, align: midLeft });
+
+                // Column headers
+                r = newRow(20);
+                headers.forEach((h, i) => {
+                    const cell = r.getCell(i + 1);
+                    cell.value = h;
+                    style(cell, {
+                        font: FONT.colHead,
+                        fill: solid("FFF3F4F6"),
+                        border: { bottom: thinGray },
+                        align: i === 5 ? midRight : midLeft,
+                    });
+                });
+
+                // Data rows
+                if (dataRows.length === 0) {
+                    r = newRow(18);
+                    ws.mergeCells(`A${ri}:F${ri}`);
+                    r.getCell(1).value = emptyMsg;
+                    styleRange(r, 1, 6, { font: FONT.empty, align: midCenter });
+                } else {
+                    dataRows.forEach(dr => {
+                        r = newRow(18);
+                        dr.forEach((val, i) => {
+                            const cell = r.getCell(i + 1);
+                            cell.value = val;
+                            style(cell, {
+                                font: FONT.row,
+                                numFmt: i === 5 ? CURRENCY : undefined,
+                                align: i === 5 ? midRight : midLeft,
+                            });
+                        });
+                    });
+                }
+
+                // Total row
+                r = newRow(20);
+                ws.mergeCells(`A${ri}:E${ri}`);
+                r.getCell(1).value = totalLabel;
+                const tBorder: Partial<ExcelJS.Borders> = { top: thinGray, bottom: thinNavy };
+                styleRange(r, 1, 5, { font: FONT.total, border: tBorder, align: midLeft });
+                const tAmt = r.getCell(6);
+                tAmt.value = totalValue;
+                style(tAmt, { font: FONT.total, numFmt: CURRENCY, border: tBorder, align: midRight });
+            };
+
+            detailSection(
+                "1. STUDENT FEE PAYMENTS DETAIL",
+                ["Date", "Reg No", "Student Name", "Squad/Level", "Fee Cycle Month", "Amount"],
+                studentRows.map(r => [fmtDate(r.date), r.regNo, r.name, r.squad, r.cycleMonth, r.amount]),
+                "Total Student Income",
+                studentTotal,
+                "No student transactions recorded for this period",
+            );
+            newRow(); newRow(); // spacers
+
+            detailSection(
+                "2. MEMBER FEE PAYMENTS DETAIL",
+                ["Date", "Reg No", "Member Name", "Squad/Level", "Fee Cycle Month", "Amount"],
+                memberRows.map(r => [fmtDate(r.date), r.regNo, r.name, r.squad, r.cycleMonth, r.amount]),
+                "Total Member Income",
+                memberTotal,
+                "No member transactions recorded for this period",
+            );
+            newRow(); newRow(); // spacers
+
+            detailSection(
+                "3. GUEST BOOKINGS (COURT PAYMENTS) DETAIL",
+                ["Date", "Guest Name", "Court No", "", "", "Amount"],
+                guestRows.map(r => [fmtDate(r.date), r.name, r.court, "", "", r.amount]),
+                "Total Guest Income",
+                guestTotal,
+                "No guest transactions recorded for this period",
+            );
 
             // Generate a filename matching the period
             const safeLabel = periodLabel.replace(/[^a-zA-Z0-9 ()\-]/g, "").replace(/\s+/g, "_");
             const fileName = `DK_Academy_Income_Statement_${safeLabel}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const dlUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = dlUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(dlUrl);
 
             toast.success("Report downloaded successfully!");
             setShowReportsModal(false);
