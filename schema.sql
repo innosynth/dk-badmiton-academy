@@ -66,6 +66,9 @@ CREATE TABLE IF NOT EXISTS guests (
   "courtNumber" TEXT,
   "paymentDetails" TEXT,
   "visitTime" TIMESTAMP,
+  "startTime" TEXT,
+  "endTime" TEXT,
+  "isEntireCourtBooked" BOOLEAN DEFAULT FALSE,
   "isActive" BOOLEAN DEFAULT TRUE,
   "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -23,7 +23,7 @@ export default async function handler(
     // POST - Add new guest
     if (method === 'POST') {
         try {
-            const { name, data, courtNumber, paymentDetails, visitTime, adminPhone } = request.body;
+            const { name, data, courtNumber, paymentDetails, visitTime, startTime, endTime, isEntireCourtBooked, adminPhone } = request.body;
 
             // Validate admin access
             if (!adminPhone) {
@@ -48,6 +48,9 @@ export default async function handler(
                 courtNumber: courtNumber?.trim() || null,
                 paymentDetails: paymentDetails?.trim() || null,
                 visitTime: visitTime ? new Date(visitTime) : null,
+                startTime: startTime?.trim() || null,
+                endTime: endTime?.trim() || null,
+                isEntireCourtBooked: isEntireCourtBooked === true,
             }).returning();
 
             return response.status(201).json(newGuest[0]);
@@ -60,7 +63,7 @@ export default async function handler(
     // PUT/PATCH - Update guest
     if (method === 'PUT' || method === 'PATCH') {
         try {
-            const { id, name, data, courtNumber, paymentDetails, visitTime, adminPhone } = request.body;
+            const { id, name, data, courtNumber, paymentDetails, visitTime, startTime, endTime, isEntireCourtBooked, adminPhone } = request.body;
 
             // Validate admin access
             if (!adminPhone) {
@@ -93,6 +96,9 @@ export default async function handler(
             if (courtNumber !== undefined) updateData.courtNumber = courtNumber?.trim() || null;
             if (paymentDetails !== undefined) updateData.paymentDetails = paymentDetails?.trim() || null;
             if (visitTime !== undefined) updateData.visitTime = visitTime ? new Date(visitTime) : null;
+            if (startTime !== undefined) updateData.startTime = startTime?.trim() || null;
+            if (endTime !== undefined) updateData.endTime = endTime?.trim() || null;
+            if (isEntireCourtBooked !== undefined) updateData.isEntireCourtBooked = isEntireCourtBooked === true;
 
             const updatedGuest = await db.update(guests)
                 .set(updateData)

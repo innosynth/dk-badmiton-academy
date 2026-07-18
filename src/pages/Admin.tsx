@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash, Search, BarChart2 } from "lucide-react";
+import { CheckCircle, User, Users, Briefcase, FileText, Download, Eye, ExternalLink, LogOut, Lock, Phone, Edit2, Trash2, UserMinus, UserCheck, Save, X, Loader2, ShoppingBag, Plus, UserPlus, Calendar, CreditCard, DollarSign, Hash, Search, BarChart2, Clock } from "lucide-react";
 import { toast } from "sonner";
 import FinancialYearSettings from "../components/FinancialYearSettings";
 import ExcelJS from "exceljs";
@@ -65,6 +65,9 @@ interface Guest {
     courtNumber: string | null;
     paymentDetails: string | null;
     visitTime: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    isEntireCourtBooked: boolean | null;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -237,7 +240,7 @@ export default function AdminPortal() {
     const [showGuestModal, setShowGuestModal] = useState(false);
     const [showManageGuestsModal, setShowManageGuestsModal] = useState(false);
     const [guests, setGuests] = useState<Guest[]>([]);
-    const [guestForm, setGuestForm] = useState({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" });
+    const [guestForm, setGuestForm] = useState({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "", startTime: "", endTime: "", isEntireCourtBooked: false });
     const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
     const [isSavingGuest, setIsSavingGuest] = useState(false);
     const [filters, setFilters] = useState({
@@ -811,6 +814,30 @@ export default function AdminPortal() {
         }
     };
 
+    const calculateTotalGuestTime = (guestsList: Guest[]) => {
+        let totalMinutes = 0;
+        guestsList.forEach(g => {
+            if (g.startTime && g.endTime) {
+                const [sh, sm] = g.startTime.split(':').map(Number);
+                const [eh, em] = g.endTime.split(':').map(Number);
+                if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+                    let diff = (eh * 60 + em) - (sh * 60 + sm);
+                    if (diff < 0) {
+                        diff += 1440; // wrap around 24h
+                    }
+                    totalMinutes += diff;
+                }
+            }
+        });
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        if (hours === 0 && mins === 0) return "0 mins";
+        
+        const hrsStr = hours > 0 ? `${hours} hr${hours > 1 ? 's' : ''}` : '';
+        const minsStr = mins > 0 ? `${mins} min${mins > 1 ? 's' : ''}` : '';
+        return `${hrsStr} ${minsStr}`.trim();
+    };
+
     const handleAddGuest = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || user.role !== 'admin') return;
@@ -826,7 +853,7 @@ export default function AdminPortal() {
             if (res.ok) {
                 toast.success("Guest added successfully");
                 setShowGuestModal(false);
-                setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" });
+                setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "", startTime: "", endTime: "", isEntireCourtBooked: false });
                 fetchGuests();
             } else {
                 toast.error(data.error || "Failed to add guest");
@@ -2123,6 +2150,38 @@ export default function AdminPortal() {
                                     className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
                                 />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Start Time</label>
+                                    <input
+                                        type="time"
+                                        value={guestForm.startTime}
+                                        onChange={e => setGuestForm({ ...guestForm, startTime: e.target.value })}
+                                        className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">End Time</label>
+                                    <input
+                                        type="time"
+                                        value={guestForm.endTime}
+                                        onChange={e => setGuestForm({ ...guestForm, endTime: e.target.value })}
+                                        className="h-12 w-full rounded-2xl border border-border bg-muted/30 px-4 text-sm font-bold focus:border-navy focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 py-1 px-1">
+                                <input
+                                    type="checkbox"
+                                    id="isEntireCourtBooked"
+                                    checked={guestForm.isEntireCourtBooked}
+                                    onChange={e => setGuestForm({ ...guestForm, isEntireCourtBooked: e.target.checked })}
+                                    className="h-4 w-4 rounded border-border text-navy focus:ring-navy cursor-pointer"
+                                />
+                                <label htmlFor="isEntireCourtBooked" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground cursor-pointer select-none">
+                                    Is that entire court booked?
+                                </label>
+                            </div>
                             <div className="flex gap-2 pt-2">
                                 <button
                                     type="submit"
@@ -2133,7 +2192,7 @@ export default function AdminPortal() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => { setShowGuestModal(false); setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "" }); }}
+                                    onClick={() => { setShowGuestModal(false); setGuestForm({ name: "", data: "", courtNumber: "", paymentDetails: "", visitTime: "", startTime: "", endTime: "", isEntireCourtBooked: false }); }}
                                     disabled={isSavingGuest}
                                     className="flex-1 rounded-xl bg-muted py-3 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-border transition-colors disabled:opacity-50"
                                 >
@@ -2202,6 +2261,36 @@ export default function AdminPortal() {
                                                 className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
                                             />
                                         </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Start Time</label>
+                                            <input
+                                                type="time"
+                                                value={editingGuest.startTime || ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, startTime: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5 px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">End Time</label>
+                                            <input
+                                                type="time"
+                                                value={editingGuest.endTime || ""}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, endTime: e.target.value })}
+                                                className="h-10 w-full rounded-xl border border-border bg-muted/30 px-4 text-xs font-bold focus:border-navy focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 flex items-center gap-2 py-1 px-1">
+                                            <input
+                                                type="checkbox"
+                                                id="editIsEntireCourtBooked"
+                                                checked={!!editingGuest.isEntireCourtBooked}
+                                                onChange={(e) => setEditingGuest({ ...editingGuest, isEntireCourtBooked: e.target.checked })}
+                                                className="h-4 w-4 rounded border-border text-navy focus:ring-navy cursor-pointer"
+                                            />
+                                            <label htmlFor="editIsEntireCourtBooked" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground cursor-pointer select-none">
+                                                Is that entire court booked?
+                                            </label>
+                                        </div>
                                         <div className="col-span-2 space-y-1.5 px-1">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Data / Notes</label>
                                             <textarea
@@ -2232,11 +2321,19 @@ export default function AdminPortal() {
                             ) : (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-lime/10 text-lime-dark">
-                                                <UserPlus className="h-4 w-4" />
+                                        <div className="flex flex-wrap items-center gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-lime/10 text-lime-dark">
+                                                    <UserPlus className="h-4 w-4" />
+                                                </div>
+                                                <span className="text-xs font-black uppercase tracking-widest text-navy">Total Guests: {guests.length}</span>
                                             </div>
-                                            <span className="text-xs font-black uppercase tracking-widest text-navy">Total Guests: {guests.length}</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-navy/5 text-navy">
+                                                    <Clock className="h-4 w-4" />
+                                                </div>
+                                                <span className="text-xs font-black uppercase tracking-widest text-navy">Total Guest Time: {calculateTotalGuestTime(guests)}</span>
+                                            </div>
                                         </div>
                                         <button
                                             onClick={() => { setShowManageGuestsModal(false); setShowGuestModal(true); }}
@@ -2245,56 +2342,99 @@ export default function AdminPortal() {
                                             <Plus className="h-4 w-4" /> Add New
                                         </button>
                                     </div>
-                                    <div className="max-h-[500px] overflow-y-auto space-y-2 pr-2 scrollbar-hide rounded-xl">
+                                    <div className="max-h-[400px] overflow-auto rounded-2xl border border-border bg-muted/10">
                                         {guests.length === 0 ? (
-                                            <div className="text-center py-10">
+                                            <div className="text-center py-10 bg-card">
                                                 <User className="h-12 w-12 text-muted-foreground opacity-20 mx-auto mb-2" />
                                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">No guests found</p>
                                             </div>
                                         ) : (
-                                            guests.map(guest => (
-                                                <div key={guest.id} className="group flex items-center justify-between rounded-2xl border border-border bg-muted/20 p-4 transition-all hover:bg-card hover:shadow-md">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-lime to-lime-dark text-white uppercase font-black text-lg">
-                                                            {guest.name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="text-sm font-black text-navy">{guest.name}</h4>
-                                                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                                                                {guest.courtNumber && (
-                                                                    <span className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground bg-navy/5 px-2 py-0.5 rounded-full">
+                                            <table className="w-full border-collapse text-left text-xs text-navy">
+                                                <thead>
+                                                    <tr className="border-b border-border bg-muted/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        <th className="p-4">Name</th>
+                                                        <th className="p-4">Court No</th>
+                                                        <th className="p-4">Start Time</th>
+                                                        <th className="p-4">End Time</th>
+                                                        <th className="p-4 text-center">Entire Court?</th>
+                                                        <th className="p-4">Visit Date/Time</th>
+                                                        <th className="p-4">Payment</th>
+                                                        <th className="p-4 text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border bg-card">
+                                                    {guests.map(guest => (
+                                                        <tr key={guest.id} className="group transition-all hover:bg-muted/10">
+                                                            <td className="p-4 font-black flex items-center gap-2">
+                                                                <div className="h-7 w-7 flex items-center justify-center rounded-lg bg-gradient-to-br from-lime to-lime-dark text-white uppercase font-black text-xs">
+                                                                    {guest.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <span>{guest.name}</span>
+                                                            </td>
+                                                            <td className="p-4">
+                                                                {guest.courtNumber ? (
+                                                                    <span className="inline-flex items-center gap-1 font-bold text-muted-foreground bg-navy/5 px-2 py-0.5 rounded-full">
                                                                         <Hash className="h-3 w-3" /> {guest.courtNumber}
                                                                     </span>
-                                                                )}
-                                                                {guest.visitTime && (
-                                                                    <span className="flex items-center gap-1 text-[9px] font-bold text-navy bg-navy/5 px-2 py-0.5 rounded-full">
-                                                                        <Calendar className="h-3 w-3" /> {new Date(guest.visitTime).toLocaleString()}
+                                                                ) : "—"}
+                                                            </td>
+                                                            <td className="p-4 font-bold text-muted-foreground">
+                                                                {guest.startTime ? (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Clock className="h-3 w-3 text-navy/40" /> {guest.startTime}
+                                                                    </span>
+                                                                ) : "—"}
+                                                            </td>
+                                                            <td className="p-4 font-bold text-muted-foreground">
+                                                                {guest.endTime ? (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Clock className="h-3 w-3 text-navy/40" /> {guest.endTime}
+                                                                    </span>
+                                                                ) : "—"}
+                                                            </td>
+                                                            <td className="p-4 text-center">
+                                                                {guest.isEntireCourtBooked ? (
+                                                                    <span className="inline-flex rounded-full bg-lime/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-lime-dark">
+                                                                        Yes
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold text-muted-foreground">
+                                                                        No
                                                                     </span>
                                                                 )}
-                                                            </div>
-                                                            <p className="text-[9px] font-medium text-muted-foreground mt-1 flex items-center gap-1">
-                                                                <Calendar className="h-3 w-3" /> Added {new Date(guest.createdAt).toLocaleDateString()}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => setEditingGuest(guest)}
-                                                            className="p-2 rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all"
-                                                            title="Edit Guest"
-                                                        >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteGuest(guest.id)}
-                                                            className="p-2 rounded-lg bg-destructive/5 text-destructive hover:bg-destructive hover:text-white transition-all"
-                                                            title="Delete Guest"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))
+                                                            </td>
+                                                            <td className="p-4 font-bold text-muted-foreground">
+                                                                {guest.visitTime ? (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Calendar className="h-3 w-3 text-navy/40" /> {new Date(guest.visitTime).toLocaleString()}
+                                                                    </span>
+                                                                ) : "—"}
+                                                            </td>
+                                                            <td className="p-4 font-medium text-muted-foreground max-w-[120px] truncate" title={guest.paymentDetails || ""}>
+                                                                {guest.paymentDetails || "—"}
+                                                            </td>
+                                                            <td className="p-4 text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <button
+                                                                        onClick={() => setEditingGuest(guest)}
+                                                                        className="p-1.5 rounded-lg bg-navy/5 text-navy hover:bg-navy hover:text-white transition-all"
+                                                                        title="Edit Guest"
+                                                                    >
+                                                                        <Edit2 className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeleteGuest(guest.id)}
+                                                                        className="p-1.5 rounded-lg bg-destructive/5 text-destructive hover:bg-destructive hover:text-white transition-all"
+                                                                        title="Delete Guest"
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         )}
                                     </div>
                                 </div>
